@@ -5,6 +5,7 @@ mainDir <- 'C:/Users/smdevine/Desktop/rangeland project'
 terrainDir <- 'C:/Users/smdevine/Desktop/rangeland project/terrain_analysis_r_v3'
 soilCDir <- 'C:/Users/smdevine/Desktop/rangeland project/soils_data/soil C'
 soilDataDir <- 'C:/Users/smdevine/Desktop/rangeland project/soils_data'
+soilCresults <- 'C:/Users/smdevine/Desktop/rangeland project/SoilCarbonProject/soilCresults'
 results <- 'C:/Users/smdevine/Desktop/rangeland project/results'
 list.files(soilCDir)
 soilmasses <- read.csv(file.path(soilCDir, 'Camatta_soilCN_masses.csv'), stringsAsFactors = FALSE)
@@ -40,8 +41,9 @@ soilCtotN[which(soilCtotN$totC.percent > 3), c('sample.ID', 'totC.percent', 'tot
 sum(duplicated(soilCtotN$sample.ID)) #21 duplicated
 duplicated_samples <- which(soilCtotN$sample.ID %in% soilCtotN$sample.ID[duplicated(soilCtotN$sample.ID)])
 soilCtotN[duplicated_samples, c('sample.ID', 'totC.percent', 'totN.percent', 'tray.ID')] #all were ok except 14_1
-soilCtotN[soilCtotN$sample.ID=='14_1',] #1-B10 was erroneous, all others OK
+soilCtotN[soilCtotN$sample.ID=='14_1',] #1-B10 was erroneous, all others OK; verified 12/1/18
 soilCtotN <- soilCtotN[-which(soilCtotN$tray.ID=='1-B10'), ]
+soilCtotN[soilCtotN$sample.ID=='65_1',] #to manually compare to soilCorgN reps
 dim(soilCtotN) #230 now
 dim(soilCorgN) #264 from draft dataset
 length(unique(soilCorgN$sample.ID)) #210 unique as expected
@@ -49,6 +51,7 @@ soilCorgN$orgC.percent <- round(100 * soilCorgN$C.mg / soilCorgN$mass.mg, 3)
 soilCorgN$totN.percent.v2 <- round(100 * soilCorgN$N.mg / soilCorgN$mass.mg, 4)
 hist(soilCorgN$orgC.percent)
 summary(soilCorgN$orgC.percent)
+soilCorgN[soilCorgN$sample.ID=='14_1',]
 duplicated_samples_orgC <- which(soilCorgN$sample.ID %in% soilCorgN$sample.ID[duplicated(soilCorgN$sample.ID)])
 soilCorgN[duplicated_samples_orgC, c('sample.ID', 'orgC.percent', 'totN.percent.v2', 'tray.ID')]
 QC_orgC <- data.frame(sample.ID =as.character(unique(soilCorgN$sample.ID)), orgC.error = as.numeric(tapply(soilCorgN$orgC.percent, soilCorgN$sample.ID, function(x) round(100*(max(x) - min(x))/mean(x), 1))))
@@ -62,8 +65,12 @@ colnames(soilCtotN)
 colnames(soilCtotN)[2] <- 'tray.ID.TC'
 colnames(soilCorgN)
 colnames(soilCorgN)[2] <- 'tray.ID.OC'
+soilCorgN[soilCorgN$sample.ID=='78_1',]
+soilCorgN <- soilCorgN[-which(soilCorgN$tray.ID.OC=='6-D7'),] #total N way off compared to total C analysis and had written a note that was not positive that re-analysis label was 5-2
+soilCorgN <- soilCorgN[-which(soilCorgN$tray.ID.OC=='6-D5'),]
+soilCorgN <- soilCorgN[-which(soilCorgN$tray.ID.OC=='4-D1'),]
 soilC_all <- merge(soilCtotN[,c('sample.ID', 'tray.ID.TC', 'totC.percent', 'totN.percent')], soilCorgN[ ,c('sample.ID', 'tray.ID.OC', 'orgC.percent', 'totN.percent.v2')], by='sample.ID') #W in org C samples denoted those that had not been dried at 60C first before immediately weighing !grepl('W', soilCorgN$sample.ID)
-dim(soilC_all) #299 rows
+dim(soilC_all) #296 rows
 length(unique(soilC_all$sample.ID)) #210 unique, so 11 duplicates (2 OC, 9 TC as of 11/8/18)
 soilC_all$inorgC.percent <- soilC_all$totC.percent - soilC_all$orgC.percent
 soilC_all$orgC.to.totC <- round(soilC_all$orgC.percent / soilC_all$totC.percent, 3)
@@ -71,7 +78,7 @@ summary(soilC_all$inorgC.percent)
 hist(soilC_all$orgC.to.totC)
 hist(soilC_all$orgC.to.totC[grepl('_1', soilC_all$sample.ID)])
 hist(soilC_all$orgC.to.totC[grepl('_2', soilC_all$sample.ID)])
-sum(soilC_all$inorgC.percent < 0) #11 less than 0
+sum(soilC_all$inorgC.percent < 0) #10 less than 0
 soilC_all[soilC_all$inorgC.percent < 0,]
 plot(soilC_all$totN.percent, soilC_all$totN.percent.v2)
 plot(soilC_all$totN.percent, soilC_all$totN.percent.v2, col=ifelse(soilC_all$sample.ID=='65_1', 'red', 'black'))
@@ -98,9 +105,9 @@ hist(soilC_all$N.diff.abs[soilC_all$N.diff.abs < 0.1])
 soilC_all[order(abs(soilC_all$N.error.percent)), c('sample.ID', 'N.error.percent', 'N.diff')]
 mean(soilC_all$totN.percent) #mean is 0.115 %N
 sd(soilC_all$totN.percent) #sd is 0.05
-sum(soilC_all$N.diff.abs > 0.01) #72 greater than 0.01% difference
-sum(soilC_all$N.diff.abs > 0.015) #35 greater
-sum(soilC_all$N.diff.abs > 0.02) #22 greater than this
+sum(soilC_all$N.diff.abs > 0.01) #113 greater than 0.01% difference
+sum(soilC_all$N.diff.abs > 0.015) #59 greater
+sum(soilC_all$N.diff.abs > 0.02) #37 greater than this
 #N_QC_summary <- summary(lm(totN.percent.v2 ~ totN.percent, data = soilC_all))
 #N_QC_summary$residuals[order(N_QC_summary$residuals)]
 soilC_all$CaCO3.percent <- round((100/12) * soilC_all$inorgC.percent, 3)
@@ -133,10 +140,12 @@ colnames(soilC_all)
 soilC_0_10cm <- soilC_all[grepl('_1', soilC_all$sample.ID), c("sample.ID", "totC.percent", "totN.percent", "orgC.percent", "totN.percent.v2", "inorgC.percent", "orgC.to.totC", "CaCO3.percent", 'N.error.percent')]
 soilC_0_10cm[which(soilC_0_10cm$sample.ID %in% soilC_0_10cm$sample.ID[duplicated(soilC_0_10cm$sample.ID)]),]
 soilC_0_10cm <- data.frame(sample.ID=unique(soilC_0_10cm$sample.ID), totC.percent=as.numeric(tapply(soilC_0_10cm$totC.percent, soilC_0_10cm$sample.ID, mean)), totN.percent=as.numeric(tapply(soilC_0_10cm$totN.percent, soilC_0_10cm$sample.ID, mean)), orgC.percent=as.numeric(tapply(soilC_0_10cm$orgC.percent, soilC_0_10cm$sample.ID, mean)), inorgC.percent=as.numeric(tapply(soilC_0_10cm$inorgC.percent, soilC_0_10cm$sample.ID, mean)), CaCO3.percent=as.numeric(tapply(soilC_0_10cm$CaCO3.percent, soilC_0_10cm$sample.ID, mean)), orgC.to.totC=as.numeric(tapply(soilC_0_10cm$orgC.to.totC, soilC_0_10cm$sample.ID, mean)), N.error.percent=as.numeric(tapply(soilC_0_10cm$N.error.percent, soilC_0_10cm$sample.ID, mean)))
-soilC_0_10cm$inorgC.percent[soilC_0_10cm$inorgC.percent < 0] <- 0 #4 were negative, meaning no detectable carbonates
+sum(soilC_0_10cm$inorgC.percent < 0) #4 were negative, meaning no detectable carbonates
+soilC_0_10cm$inorgC.percent[soilC_0_10cm$inorgC.percent < 0] <- 0 
 soilC_0_10cm$CaCO3.percent[soilC_0_10cm$CaCO3.percent < 0] <- 0
 soilC_10_30cm <- soilC_all[grepl('_2', soilC_all$sample.ID), ]
 soilC_10_30cm <- data.frame(sample.ID=unique(soilC_10_30cm$sample.ID), totC.percent=as.numeric(tapply(soilC_10_30cm$totC.percent, soilC_10_30cm$sample.ID, mean)), totN.percent=as.numeric(tapply(soilC_10_30cm$totN.percent, soilC_10_30cm$sample.ID, mean)), orgC.percent=as.numeric(tapply(soilC_10_30cm$orgC.percent, soilC_10_30cm$sample.ID, mean)), inorgC.percent=as.numeric(tapply(soilC_10_30cm$inorgC.percent, soilC_10_30cm$sample.ID, mean)), CaCO3.percent=as.numeric(tapply(soilC_10_30cm$CaCO3.percent, soilC_10_30cm$sample.ID, mean)), orgC.to.totC=as.numeric(tapply(soilC_10_30cm$orgC.to.totC, soilC_10_30cm$sample.ID, mean)), N.error.percent=as.numeric(tapply(soilC_10_30cm$N.error.percent, soilC_10_30cm$sample.ID, mean)))
+sum(soilC_10_30cm$inorgC.percent < 0)
 soilC_10_30cm$inorgC.percent[soilC_10_30cm$inorgC.percent < 0] <- 0 #2 samples had undetectable levels of carbonates
 soilC_10_30cm$CaCO3.percent[soilC_10_30cm$CaCO3.percent < 0] <- 0
 mean(soilC_0_10cm$totN.percent)
@@ -160,8 +169,10 @@ tapply(soilC_0_10cm$totC.percent, soilC_0_10cm$sample.ID, length) #57_1 and 58_1
 # soilC_0_10cm <- soilC_0_10cm[-c(36, 39), ]
 hist(soilC_10_30cm$orgC.percent)
 hist(soilC_10_30cm$orgC.percent)
-#write.csv(soilC_0_10cm, file.path(soilCDir, 'soilC_0_10cm.draft.csv'), row.names = FALSE)
-#write.csv(soilC_10_30cm, file.path(soilCDir, 'soilC_10_30cm.draft.csv'), row.names = FALSE)
+#write.csv(soilC_0_10cm, file.path(soilCresults, 'soilC_0_10cm_Camatta.csv'), row.names = FALSE)
+#write.csv(soilC_10_30cm, file.path(soilCresults, 'soilC_10_30cm_Camatta.csv'), row.names = FALSE)
+soilC_0_10cm <- read.csv(file.path(soilCresults, 'soilC_0_10cm_Camatta.csv'), stringsAsFactors = FALSE)
+soilC_10_30cm <- read.csv(file.path(soilCresults, 'soilC_10_30cm_Camatta.csv'), stringsAsFactors = FALSE)
 
 #read in bulk density data
 #read-in BD_data
@@ -191,13 +202,14 @@ names(Mar2017_terrain_3m) <- c('aspect', 'curvature_mean', 'curvature_plan', 'cu
 list.files(file.path(terrainDir, 'solrad_analysis')) #all files were sky size 500 x 500 and 64 calc directions
  #all v2 files were sky size 500 x 500 and 64 calc directions
 solrad <- shapefile(file.path(terrainDir, 'solrad_analysis', 'solrad_105pts.shp'))
+plot(solrad)
 names(solrad)
-#solrad$point_no <- 1:105
+solrad$point_no <- sampling_pts$point_no #this is correct labelling
+text(solrad, labels=solrad$point_no, offset=0.1, pos=1)
 #solrad$annual_kwh.m2 <- apply(as.data.frame(solrad[ ,1:52]), 1, sum) / 1000
 solrad_df <- as.data.frame(solrad)
 colnames(solrad_df)
 head(solrad_df)
-solrad_df$point_no <- sampling_pts$point_no
 solrad_df$annual_kwh.m2 <- apply(solrad_df[ ,1:52], 1, sum) / 1000
 summary(solrad_df$annual_kwh.m2)
 length(seq.Date(as.Date('Oct_01_2017', '%b_%d_%Y'), as.Date('Apr_15_2018', '%b_%d_%Y'), by='day')) #197 days
@@ -219,30 +231,71 @@ soil_0_10cm_shp <- merge(sampling_pts, soilC_0_10cm, by='point_no')
 soil_0_10cm_shp <- merge(soil_0_10cm_shp, soil_chars_0_10, by='point_no')
 soil_0_10cm_shp <- merge(soil_0_10cm_shp, BD_data_0_10cm, by='point_no')
 soil_0_10cm_shp$soil.kg.orgC.m2 <- soil_0_10cm_shp$orgC.percent * soil_0_10cm_shp$bulk_density_g_cm3 * (100 - soil_0_10cm_shp$frags_vol_perc) / 100
-soil_0_10cm_shp$soil.kg.IC.m2 <- soil_0_10cm_shp$s
+soil_0_10cm_shp$soil.kg.IC.m2 <- soil_0_10cm_shp$inorgC.percent * soil_0_10cm_shp$bulk_density_g_cm3 * (100 - soil_0_10cm_shp$frags_vol_perc) / 100
 soil_0_10cm_shp$soil.kgClay.m2 <- soil_0_10cm_shp$CLAY * soil_0_10cm_shp$bulk_density_g_cm3 * (100 - soil_0_10cm_shp$frags_vol_perc) / 100
+soil_0_10cm_shp$soil.gP.m2 <- soil_0_10cm_shp$P1 * soil_0_10cm_shp$bulk_density_g_cm3 * (100 - soil_0_10cm_shp$frags_vol_perc) / 100 * 0.1 #see notes
+soil_0_10cm_shp$energy_colors <- ifelse(soil_0_10cm_shp$annual_kwh.m2 <= 1200, 'blue', ifelse(soil_0_10cm_shp$annual_kwh.m2 > 1200 & soil_0_10cm_shp$annual_kwh.m2 < 1410, 'orange2', 'red3'))
+soil_0_10cm_shp$WMPD_mm <- (soil_0_10cm_shp$CLAY * 0.001 ) / 100 + (soil_0_10cm_shp$SILT * 0.026) / 100 + (soil_0_10cm_shp$SAND * 1.025) / 100
+soil_0_10cm_shp$soil.kg.TN.m2 <- soil_0_10cm_shp$totN.percent * soil_0_10cm_shp$bulk_density_g_cm3 * (100 - soil_0_10cm_shp$frags_vol_perc) / 100
+
+summary(lm(soil.kg.orgC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_0_10cm_shp))) #r^2=0.15, p.val=.002, but slope only signifcant parameter
+summary(lm(soil.kg.IC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_0_10cm_shp))) #NS p.val=0.39
+summary(lm(soil.kg.IC.m2 ~ annual_kwh.m2, data=as.data.frame(soil_0_10cm_shp)))
+summary(lm(soil.kg.IC.m2 ~ elevation, data=as.data.frame(soil_0_10cm_shp)))
+summary(lm(soil.kgClay.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_0_10cm_shp))) #r^2=0.14, p.val=0.004; elevation most sig
+summary(lm(WMPD_mm ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_0_10cm_shp))) #r^2=0.23, p.val < 0.001; elevation most sig
+summary(lm(soil.gP.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_0_10cm_shp))) #r^2=0.12, p.val=0.01; aspect most sig
+summary(lm(soil.kg.orgC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation + soil.kgClay.m2, data=as.data.frame(soil_0_10cm_shp))) #r2=0.20 p.val < .001
+summary(lm(soil.kg.orgC.m2 ~ slope + curvature_mean + soil.kgClay.m2, data=as.data.frame(soil_0_10cm_shp))) #r^2=0.18 p.val < 0.001; all params sig
+summary(lm(soil.kg.orgC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation + WMPD_mm, data=as.data.frame(soil_0_10cm_shp))) #r^2=0.19
+shapefile(soil_0_10cm_shp, file.path(soilCresults, 'shapefiles', 'soil_0_10cm.shp'))
+write.csv(as.data.frame(soil_0_10cm_shp), file.path(soilCresults, 'shapefiles', 'soil_0_10cm_df.csv'), row.names = FALSE)
 hist(soil_0_10cm_shp$soil.kg.orgC.m2)
-plot(1:105, soil_0_10cm_shp$soil.kg.orgC.m2)
-text(1:105, soil_0_10cm_shp$soil.kg.orgC.m2, labels=soil_0_10cm_shp$point_no, offset=0.2, pos=1)
+plot(soil_0_10cm_shp, cex=soil_0_10cm_shp$soil.kg.orgC.m2/2, pch=2, col=soil_0_10cm_shp$energy_colors)
+text(soil_0_10cm_shp, labels=soil_0_10cm_shp$point_no, offset=0.2, pos=1)
 
 soil_10_30cm_shp <- merge(sampling_pts, soilC_10_30cm, by='point_no')
 soil_10_30cm_shp <- merge(soil_10_30cm_shp, soil_chars_10_30, by='point_no')
 soil_10_30cm_shp <- merge(soil_10_30cm_shp, BD_data_10_30cm, by='point_no')
-#soil_0_10cm_shp$energy_colors <- 
 soil_10_30cm_shp$soil.kg.orgC.m2 <- soil_10_30cm_shp$orgC.percent * soil_10_30cm_shp$bulk_density_g_cm3 * 2 * (100 - soil_10_30cm_shp$frags_vol_perc) / 100
 soil_10_30cm_shp$soil.kgClay.m2 <- soil_10_30cm_shp$CLAY * soil_10_30cm_shp$bulk_density_g_cm3 * 2 * (100 - soil_10_30cm_shp$frags_vol_perc) / 100
-hist(soil_10_30cm_shp$soil.kg.orgC.m2)
-hist(soil_0_10cm_shp$soil.kg.orgC.m2 + soil_10_30cm_shp$soil.kg.orgC.m2)
+soil_10_30cm_shp$soil.kg.IC.m2 <- soil_10_30cm_shp$inorgC.percent * soil_10_30cm_shp$bulk_density_g_cm3 * (100 - soil_10_30cm_shp$frags_vol_perc) / 100
+soil_10_30cm_shp$soil.gP.m2 <- soil_10_30cm_shp$P1 * soil_10_30cm_shp$bulk_density_g_cm3 * (100 - soil_10_30cm_shp$frags_vol_perc) / 100 * 0.1 #see notes
+soil_10_30cm_shp$soil.kg.TN.m2 <- soil_10_30cm_shp$totN.percent * soil_10_30cm_shp$bulk_density_g_cm3 * (100 - soil_10_30cm_shp$frags_vol_perc) / 100
+soil_10_30cm_shp$energy_colors <- ifelse(soil_10_30cm_shp$annual_kwh.m2 <= 1200, 'blue', ifelse(soil_10_30cm_shp$annual_kwh.m2 > 1200 & soil_10_30cm_shp$annual_kwh.m2 < 1410, 'orange2', 'red3'))
+soil_10_30cm_shp$WMPD_mm <- (soil_10_30cm_shp$CLAY * 0.001 ) / 100 + (soil_10_30cm_shp$SILT * 0.026) / 100 + (soil_10_30cm_shp$SAND * 1.025) / 100
+summary(lm(soil.kg.orgC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_10_30cm_shp))) #r^2=0.50, p.val=.002, all params sig.
+summary(lm(soil.kg.IC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_10_30cm_shp))) #r^2=0.48
+summary(lm(soil.kg.IC.m2 ~ annual_kwh.m2, data=as.data.frame(soil_10_30cm_shp))) #r^2=0.11
+summary(lm(soil.kg.IC.m2 ~ elevation, data=as.data.frame(soil_10_30cm_shp)))
+summary(lm(soil.kgClay.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_10_30cm_shp))) #r^2=0.31, p.val=0.004; elevation most sig
+summary(lm(WMPD_mm ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_10_30cm_shp))) #r^2=0.28, p.val < 0.001; elevation most sig
+summary(lm(soil.gP.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_10_30cm_shp))) #r^2=0.28, p.val=0.01; aspect most sig
+summary(lm(soil.gP.m2 ~ soil.kg.IC.m2, data = as.data.frame(soil_10_30cm_shp))) #r^2=0.35
+summary(lm(soil.kg.orgC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation + soil.kgClay.m2, data=as.data.frame(soil_10_30cm_shp))) #r2=0.55 p.val < .001
+summary(lm(soil.kg.orgC.m2 ~ slope + curvature_mean + soil.kgClay.m2, data=as.data.frame(soil_10_30cm_shp))) #r^2=0.43 p.val < 0.001; all params sig
+summary(lm(soil.kg.orgC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation + WMPD_mm, data=as.data.frame(soil_10_30cm_shp))) #r^2=0.53
+shapefile(soil_10_30cm_shp, file.path(soilCresults, 'shapefiles', 'soil_10_30cm.shp'))
+write.csv(as.data.frame(soil_10_30cm_shp), file.path(soilCresults, 'shapefiles', 'soil_10_30cm_df.csv'), row.names = FALSE)
+
+#read-in csv files there to combine into one master file
+names(soil_0_10cm_shp)
 soil_0_10cm_shp$point_no - soil_10_30cm_shp$point_no
-sampling_pts$sand_wtd <- (10*soil_0_10cm_shp$SAND + 20*soil_10_30cm_shp$SAND) / 30
-sampling_pts$clay_wtd <- (10*soil_0_10cm_shp$CLAY + 20*soil_10_30cm_shp$CLAY) / 30
-sampling_pts$clay_content <- soil_0_10cm_shp$soil.kgClay.m2 + soil_10_30cm_shp$soil.kgClay.m2
-#sampling_pts$sand_content <-
-#sampling_pts$Apr2017biomass <- extract(biomass_Apr2017, coordinates(sampling_pts)[,1:2], fun=mean, buffer=1)
-hist(sampling_pts$sand_wtd)
-hist(sampling_pts$clay_wtd)
-sampling_pts$orgC_content <- soil_0_10cm_shp$soil.kg.orgC.m2 + soil_10_30cm_shp$soil.kg.orgC.m2
-#write.csv(as.data.frame(sampling_pts), 'C:/Users/smdevine/Desktop/rangeland project/SoilCarbonProject/terrain.features/terrain_105pts.csv', row.names=FALSE)
+soil_0_30cm_shp <- soil_0_10cm_shp[,1:15]
+names(soil_0_30cm_shp)
+soil_0_30cm_shp$kgOrgC.m2 <- soil_0_10cm_shp$soil.kg.orgC.m2 + soil_10_30cm_shp$soil.kg.orgC.m2
+soil_0_30cm_shp$kgClay.m2 <- soil_0_10cm_shp$soil.kgClay.m2 + soil_10_30cm_shp$soil.kgClay.m2
+soil_0_30cm_shp$kgIC.m2 <- soil_0_10cm_shp$soil.kg.IC.m2 + soil_10_30cm_shp$soil.kg.IC.m2
+soil_0_30cm_shp$gP.m2 <- soil_0_10cm_shp$soil.gP.m2 + soil_10_30cm_shp$soil.gP.m2
+
+soil_0_30cm_shp$sand_wtd <- (10*soil_0_10cm_shp$SAND + 20*soil_10_30cm_shp$SAND) / 30
+soil_0_30cm_shp$clay_wtd <- (10*soil_0_10cm_shp$CLAY + 20*soil_10_30cm_shp$CLAY) / 30
+
+
+hist(soil_0_30cm_shp$sand_wtd)
+hist(soil_0_30cm_shp$clay_wtd)
+
+write.csv(as.data.frame(soil_0_30cm_shp), file.path(soilCresults, 'shapefiles', 'soil_0_30cm_df.csv'), row.names = FALSE)
 
 #plot soil C as interpolated map
 #see labs 14 and 15 from Quant Geo for tips
@@ -391,11 +444,7 @@ summary(lm(orgC.percent ~ SAND + curvature_mean + slope + annual_kwh.m2, data = 
 lm_0_10cm <- lm(orgC.percent ~ SAND + curvature_mean + slope + annual_kwh.m2, data = as.data.frame(soil_0_10cm_shp))
 plot(lm_0_10cm$fitted.values, soilC_10_30cm$orgC.percent)
 plot(lm(orgC.percent ~ SAND + curvature_mean + slope + annual_kwh.m2, data = as.data.frame(soil_0_10cm_shp))) #59, 79, and 83 are problematic
-summary(lm(orgC.percent ~ slope + annual_kwh.m2 + curvature_mean, data=as.data.frame(soil_0_10cm_shp)))
-summary(lm(orgC.percent ~ curvature_mean + slope, data=as.data.frame(soil_0_10cm_shp)))
-summary(lm(orgC.percent ~ curvature_profile + slope, data=as.data.frame(soil_0_10cm_shp)))
-summary(lm(orgC.percent ~ curvature_mean + slope + elevation, data=as.data.frame(soil_0_10cm_shp)))
-summary(lm(orgC.percent ~ curvature_mean + slope + elevation + Apr2017biomass, data=as.data.frame(soil_0_10cm_shp)))
+
 summary(lm(orgC.percent ~ SAND + curvature_mean + slope + annual_kwh.m2, data=as.data.frame(soil_10_30cm_shp))) #all params significant and 
 lm_10_30cm <- lm(orgC.percent ~ SAND + curvature_mean + slope + annual_kwh.m2, data=as.data.frame(soil_10_30cm_shp))
 plot(lm_10_30cm$fitted.values, soilC_10_30cm_df$orgC.percent)
