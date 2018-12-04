@@ -341,6 +341,10 @@ summary(lm(kgOrgC.m2 ~ curvature_mean + elevation + slope+ annual_kwh.m2 + kgCla
 summary(lm(kgIC.m2 ~ curvature_mean + elevation + slope+ annual_kwh.m2 + kgClay.m2, data=soil_0_30cm_shp))
 write.csv(as.data.frame(soil_0_30cm_shp), file.path(soilCresults, 'shapefiles', 'soil_0_30cm_df.csv'), row.names = FALSE)
 shapefile(soil_0_30cm_shp, file.path(soilCresults, 'shapefiles', 'soil_0_30cm.shp'))
+soil_0_30cm_df <- read.csv(file.path(soilCresults, 'shapefiles', 'soil_0_30cm_df.csv'), stringsAsFactors = FALSE)
+soil_0_30cm_shp <- SpatialPointsDataFrame(soil_0_30cm_df[,c('coords.x1', 'coords.x2')], data=soil_0_30cm_df, proj4string = CRS('+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0'))
+plot(soil_0_30cm_shp, cex=soil_0_30cm_shp$kgOrgC.m2/2, pch=20)
+
 
 #now calculate distance from forage sampling points in 2017 to soil sampling points in 2018
 waypoint_forage_sp <- shapefile(file.path(forageDir, 'waypoint_forage2017.shp'))
@@ -348,7 +352,9 @@ sensor_forage_sp <- shapefile(file.path(forageDir, 'sensor_forage2017.shp'))
 names(waypoint_forage_sp)
 names(sensor_forage_sp)
 all_forage_sp <- rbind(sensor_forage_sp, waypoint_forage_sp)
-?pointDistance
+all_forage_sp <- all_forage_sp[-which(all_forage_sp$location=='B01'),]
+all_forage_sp$peak_2017 <- apply(as.data.frame(all_forage_sp)[,2:5], 1, max)
+plot(all_forage_sp, cex=all_forage_sp$peak_2017/2000, col='red', pch=2, add=TRUE)
 distance_matrix <- as.data.frame(pointDistance(coordinates(all_forage_sp)[,1:2], coordinates(soil_0_30cm_shp)[,1:2], lonlat = FALSE))
 colnames(distance_matrix) <- paste('pt_', soil_0_30cm_shp$point_no)
 distance_matrix <- cbind(clip_plot=all_forage_sp$location, distance_matrix)
@@ -356,128 +362,118 @@ class(distance_matrix)
 dim(distance_matrix)
 head(distance_matrix)
 write.csv(distance_matrix, file.path(soilCresults, 'distance_matrix', 'distance_matrix_clip_plots2017.csv'), row.names = FALSE)
+distance_matrix <- read.csv(file.path(soilCresults, 'distance_matrix', 'distance_matrix_clip_plots2017.csv'), stringsAsFactors = FALSE)
+pts_prox <- data.frame(pts_less_than=apply(distance_matrix[,2:ncol(distance_matrix)], 1, function(x) sum(x < 20)))
+pts_prox$location <- distance_matrix$clip_plot
+pts_prox[pts_prox == 0,]
+
+##this needs to be refined still
 #plot soil C as interpolated map
 #see labs 14 and 15 from Quant Geo for tips
-#function interpolate is good start
+#also http://rspatial.org/analysis/rst/4-interpolation.html
 library(gstat)
-#r <- raster(extent(Mar2017_terrain_3m), resolution=res(Mar2017_terrain_3m), crs=crs(Mar2017_terrain_3m))
-r <- raster(extent(soil_0_10cm_shp), resolution=3, crs=crs(soil_0_10cm_shp))
-#values(r) <- 1:ncell(r)
-#plot(r)
-#plot(soil_0_10cm_shp, add=TRUE)
-class(soil_0_10cm_shp$CLAY)
-summary(soil_0_10cm_shp$CLAY)
-test <- soil_0_10cm_shp[,'CLAY']
-summary(soil_0_10cm_shp$CLAY)
-names(sampling_pts)
-idm <- gstat(id='orgC_content', formula = orgC_content~1, data = sampling_pts, nmax=10)
-idp <- interpolate(r, idm)
-summary(idp)
-plot(idp)
-summary(sampling_pts$orgC_content)
-#optimize a couple of parameters in interpolate
-#from lab 14 line 112
+r <- raster(xmn=(xmin(soil_0_30cm_shp)-20), xmx=(xmax(soil_0_30cm_shp)+20), ymn=(ymin(soil_0_30cm_shp) - 20), ymx=(ymax(soil_0_30cm_shp) + 20), resolution=3, crs=crs(soil_0_30cm_shp))
+#inverse distance weighted model for 0-30 cm organic carbon
+library(gstat)
+orgC_nn <- gstat(formula=kgOrgC.m2~1, locations=soil_0_30cm_shp, maxdist = 35, set=list(idp = 0)) #nearest neighbors approach:  idp=0
+orgC_interpolated_nn <- interpolate(r, orgC_nn)
+orgC_idw <- gstat(formula = kgOrgC.m2 ~ 1, locations = soil_0_30cm_shp, maxdist = 45, set=list(idp = 2.5))
+orgC_interpolated_idw <- interpolate(r, orgC_idw)
+summary(orgC_interpolated_nn)
+summary(orgC_interpolated_idw)
+plot(orgC_interpolated_nn)
+plot(orgC_interpolated_idw)
+plot(all_forage_sp, cex=all_forage_sp$peak_2017/2000, col='red', pch=2, add=TRUE)
+all_forage_sp$orgC_est_idw <- extract(orgC_interpolated_idw, all_forage_sp)
+all_forage_sp$orgC_est_nn <- extract(orgC_interpolated_nn, all_forage_sp)
+plot(all_forage_sp$orgC_est_idw, all_forage_sp$peak_2017)
+plot(all_forage_sp$orgC_est_nn, all_forage_sp$peak_2017) #col=ifelse(all_forage_sp$location %in% as.character(1:16), 'red', 'black'))
+summary(lm(peak_2017 ~ orgC_est_idw, data = all_forage_sp))
+summary(lm(peak_2017 ~ orgC_est_nn, data = all_forage_sp))
+
+#optimize a couple of parameters in idw
 RMSE <- function(observed, predicted) {
   sqrt(mean((predicted - observed)^2, na.rm=TRUE))
 }
+#x <- c(3, 20, 0.2)
+#test <- soil_0_30cm_shp[i,]
+#train <- soil_0_30cm_shp[-i,]
 f1 <- function(x, test, train) {
-  nmx <- x[1]
+  #nmx <- x[1] if so desired
+  mxdist <- x[1]
   idp <- x[2]
   if (nmx < 1) return(Inf)
   if (idp < .001) return(Inf)
-  m <- gstat(formula=OZDLYAV~1, locations=train, nmax=nmx, set=list(idp=idp))
+  m <- gstat(formula=kgOrgC.m2~1, locations=train, maxdist = mxdist, set=list(idp=idp)) #nmax=nmx if so desired
   p <- predict(m, newdata=test, debug.level=0)$var1.pred
-  RMSE(test$OZDLYAV, p)
+  RMSE(test$kgOrgC.m2, p)
 }
-set.seed(20150518)
-i <- sample(nrow(soil_0_10cm_shp), 0.2 * nrow(soil_0_10cm_shp))
-tst <- soil_0_10cm_shp[i,]
-trn <- aq[-i,]
-opt <- optim(c(8, .5), f1, test=tst, train=trn)
-opt
-#now use the optimal IDW model
-m <- gstat(formula=OZDLYAV~1, locations=aq, nmax=opt$par[1], set=list(idp=opt$par[2]))
-idw <- interpolate(r, m)
-idw <- mask(idw, ca)
-plot(idw)
+set.seed(20161203)
+library(dismo)
+kf <- kfold(soil_0_30cm_shp, k=7)
+opt_results <- data.frame(maxdist=rep(NA, 7), idp=rep(NA, 7)) #if so desired nmax=rep(NA, 7)
+for (k in 1:7) {
+  tst <- soil_0_30cm_shp[kf == k, ]
+  trn <- soil_0_30cm_shp[kf != k, ]
+  opt <- optim(c(45, 1.8), f1, test=tst, train=trn)
+  opt_results[k,] <- opt$par
+}
+opt_results
+apply(opt_results, 2, mean)
+#cross-validate idw model
+rmse <- rep(NA, 7)
+for (k in 1:7) {
+  tst <- soil_0_30cm_shp[kf == k, ]
+  trn <- soil_0_30cm_shp[kf != k, ]
+  gs <- gstat(formula=kgOrgC.m2~1, locations=trn, maxdist = 40, set=list(idp=1.7))
+  p <- predict(gs, tst)
+  rmse[k] <- RMSE(tst$kgOrgC.m2, p$var1.pred)
+}
+rmse
+mean(rmse)
+null <- RMSE(soil_0_30cm_shp$kgOrgC.m2, mean(soil_0_30cm_shp$kgOrgC.m2))
+null #0.706
 
-gs <- gstat(formula=kgOrgC.m2 ~ 1, locations=soil_0_30cm_shp)
-v <- variogram(gs, width=15, cutoff=200)
-v
+#cross validate nearest neighbors model
+for (k in 1:7) {
+  tst <- soil_0_30cm_shp[kf == k, ]
+  trn <- soil_0_30cm_shp[kf != k, ]
+  gs <- gstat(formula=kgOrgC.m2~1, locations=trn, maxdist = 25, set=list(idp=0))
+  p <- predict(gs, tst)
+  rmse[k] <- RMSE(tst$kgOrgC.m2, p$var1.pred)
+}
+rmse
+mean(rmse)
+null <- RMSE(soil_0_30cm_shp$kgOrgC.m2, mean(soil_0_30cm_shp$kgOrgC.m2))
+null #0.706
+
+
+#ordinary kriging
+#borrowed code from http://rspatial.org/analysis/rst/4-interpolation.html
+gs <- gstat(formula=kgOrgC.m2~1, locations=soil_0_30cm_shp)
+v <- variogram(gs, width=12)
+head(v)
 plot(v)
-fve <- fit.variogram(v, vgm(model = "Exp"))
+fve <- fit.variogram(v, vgm(psill=30, model="Exp", range=50, nugget=20))
 fve
-plot(variogramLine(fve, 200), type='l')
+##   model    psill    range
+## 1   Nug 21.96600  0.00000
+## 2   Exp 85.52957 72.31404
+plot(variogramLine(fve, 100), type='l', ylim=c(0,0.7))
 points(v[,2:3], pch=20, col='red')
-#Try a different type (spherical in stead of exponential)
-fvs <- fit.variogram(v, vgm(model="Sph"))
-fvs
-plot(variogramLine(fvs, 200), type='l', col='blue', lwd=2)
-points(v[,2:3], pch=20, col='red')
-#Another way to plot the variogram and the model
-plot(v, fve)
-plot(v, fvs)
-#Use variogram fve in a kriging interpolation
-k <- gstat(formula=orgC_content ~ 1, locations=sampling_pts, model=fve)
-#gstat(formula=orgC_content ~ 1, locations=sampling_pts)
-class(k)
+krig_model <- gstat(formula=kgOrgC.m2~1, locations=soil_0_30cm_shp, model=fve)
 # predicted values
+orgC_krigged <- predict(krig_model, as(r, 'SpatialGrid'))
+## [using ordinary kriging]
+spplot(orgC_krigged)
+orgC_krigged <- brick(orgC_krigged)
+plot(orgC_krigged$var1.pred)
+all_forage_sp$orgC_est_krig <- extract(orgC_krigged$var1.pred, all_forage_sp)
+plot(all_forage_sp$orgC_est_krig, all_forage_sp$peak_2017)
+summary(lm(peak_2017 ~ orgC_est_krig, data = all_forage_sp))
 
-g <- as(r, 'SpatialGrid')
-kp <- predict(k, g)
-class(kp)
-spplot(kp)
-kp_raster <- raster(kp)
-plot(kp_raster)
 
-
-plot(biomass_Apr2017)
-plot(sampling_pts, cex=sampling_pts$orgC_content/2, pch=1, add=TRUE)
-summary(lm(orgC_content ~ elevation + slope + curvature_mean + annual_kwh.m2, data= sampling_pts))
-summary(lm(orgC_content ~ elevation + slope + curvature_mean + annual_kwh.m2 + sand_wtd, data= sampling_pts))
-summary(lm(orgC_content ~ slope + curvature_mean + annual_kwh.m2 + clay_wtd, data= sampling_pts))
-plot(lm(orgC_content ~ slope + curvature_mean + annual_kwh.m2 + clay_wtd, data= sampling_pts))
-sampling_pts$C_residuals <- lm(orgC_content ~ slope + curvature_mean + annual_kwh.m2 + clay_wtd, data= sampling_pts)$residuals
-plot(sampling_pts, cex=abs(sampling_pts$C_residuals))
-summary(lm(orgC_content ~ slope + curvature_mean + annual_kwh.m2 + clay_content, data= sampling_pts))
-
-#summary(lm(Apr2017biomass ~ slope + curvature_mean + annual_kwh.m2 + clay_wtd, data= sampling_pts))
-#summary(lm(Apr2017biomass ~ orgC_content + clay_wtd, data= sampling_pts))
-#summary(lm(Apr2017biomass ~ orgC_content + sand_wtd, data= sampling_pts))
-#summary(lm(Apr2017biomass ~ orgC_content + sand_wtd + annual_kwh.m2, data= sampling_pts))
-#summary(lm(Apr2017biomass ~ orgC_content + sand_wtd + annual_kwh.m2 + curvature_mean, data= sampling_pts)) #r^2=0.48
-#summary(lm(Apr2017biomass ~ orgC_content + sand_wtd + annual_kwh.m2 + curvature_mean + slope, data= sampling_pts)) 
-#summary(lm(Apr2017biomass ~ orgC_content + sand_wtd + annual_kwh.m2 + curvature_mean + slope + elevation, data= sampling_pts))#r^2 =0.67
-#summary(lm(Apr2017biomass ~ annual_kwh.m2 + curvature_mean + slope + elevation, data= sampling_pts)) #r^2=0.67
-#summary(lm(Apr2017biomass ~ curvature_mean + slope + elevation, data= sampling_pts)) #r2=0.66
-#summary(lm(Apr2017biomass ~ curvature_mean, data= sampling_pts)) #r^2=0.22
-#summary(lm(Apr2017biomass ~ slope, data= sampling_pts)) #r^2=0.08
-#summary(lm(Apr2017biomass ~ elevation, data= sampling_pts)) #r^2= 0.36 strongest relationship
-#summary(lm(Apr2017biomass ~ curvature_mean + elevation, data= sampling_pts)) #r2=0.41
-#vif(lm(Apr2017biomass ~ orgC_content + sand_wtd + annual_kwh.m2 + curvature_mean + slope + elevation, data= sampling_pts))
-#summary(lm(Apr2017biomass ~ slope + curvature_mean + annual_kwh.m2 + CLAY, data= soilC_10_30cm_df))
-#summary(lm(Apr2017biomass ~ slope + curvature_mean + annual_kwh.m2, data= soilC_10_30cm_df))
-#summary(lm(Apr2017biomass ~ slope + curvature_mean + annual_kwh.m2, data= soilC_0_10cm_df)) #double-check nothing funky
-#summary(lm(Apr2017biomass ~ slope + curvature_mean + annual_kwh.m2 + SAND, data= soilC_0_10cm_df))
-#summary(lm(Apr2017biomass ~ slope + curvature_mean + annual_kwh.m2 + SAND + orgC.percent, data= soilC_0_10cm_df))
-#summary(lm(Apr2017biomass ~ orgC.percent + SAND, data= soilC_0_10cm_df))
-plot(orgC_contents, soil_0_10cm_shp$Apr2017biomass, color)
-plot(biomass_Apr2017)
-plot(soil_0_10cm_shp, cex=soil_0_10cm_shp$orgC.percent, pch=1, add=T)
-plot(soil_0_10cm_shp, cex=soil_0_10cm_shp$CLAY/20, pch=1)
-soil_0_10cm_shp$Apr2017biomass <- extract(biomass_Apr2017, coordinates(soil_0_10cm_shp)[,1:2], buffer=1, fun=mean)
-soil_10_30cm_shp$Apr2017biomass <- extract(biomass_Apr2017, coordinates(soil_10_30cm_shp)[,1:2], buffer=1, fun=mean)
-plot(soil_0_10cm_shp$orgC.percent, soil_0_10cm_shp$Apr2017biomass, col=ifelse(soil_0_10cm_shp$N.error.percent > 10, 'red', 'black'))
-plot(soil_0_10cm_shp$slope, soil_0_10cm_shp$orgC.percent)
-plot(soil_0_10cm_shp$annual_kwh.m2, soil_0_10cm_shp$orgC.percent)
-plot(soil_0_10cm_shp$curvature_mean, soil_0_10cm_shp$orgC.percent)
-plot(soil_0_10cm_shp$CLAY, soil_0_10cm_shp$orgC.percent)
-plot(soil_0_10cm_shp$SAND, soil_0_10cm_shp$orgC.percent)
-plot(soil_0_10cm_shp$SILT, soil_0_10cm_shp$orgC.percent)
-plot(soil_0_10cm_shp$SAND, soil_0_10cm_shp$Apr2017biomass)
-plot(soil_0_10cm_shp$CLAY, soil_0_10cm_shp$Apr2017biomass)
-plot(soil_0_10cm_shp$P1, soil_0_10cm_shp$orgC.percent)
-plot(soil_0_10cm_shp$HCO3_P, soil_0_10cm_shp$orgC.percent)
+#random forest test
 tuneRF(x=as.data.frame(soil_0_10cm_shp)[,c('SAND', 'curvature_mean', 'slope', 'annual_kwh.m2')], soil_0_10cm_shp$orgC.percent, stepFactor = 1)
 randomForest(CLAY ~ curvature_mean + slope + annual_kwh.m2 + elevation, data = soilC_0_10cm_df, mtry=1)
 tuneRF(x=as.data.frame(soil_0_10cm_shp)[,c('elevation', 'curvature_mean', 'slope', 'annual_kwh.m2')], soil_0_10cm_shp$CLAY, stepFactor = 1.5)
@@ -499,35 +495,3 @@ RF_0_10C
 plot(RF_0_10C)
 importance(RF_0_10C)
 varImpPlot(RF_0_10C)
-summary(lm(orgC.percent ~ SAND + curvature_mean + slope + annual_kwh.m2, data = as.data.frame(soil_0_10cm_shp)))
-lm_0_10cm <- lm(orgC.percent ~ SAND + curvature_mean + slope + annual_kwh.m2, data = as.data.frame(soil_0_10cm_shp))
-plot(lm_0_10cm$fitted.values, soilC_10_30cm$orgC.percent)
-plot(lm(orgC.percent ~ SAND + curvature_mean + slope + annual_kwh.m2, data = as.data.frame(soil_0_10cm_shp))) #59, 79, and 83 are problematic
-
-summary(lm(orgC.percent ~ SAND + curvature_mean + slope + annual_kwh.m2, data=as.data.frame(soil_10_30cm_shp))) #all params significant and 
-lm_10_30cm <- lm(orgC.percent ~ SAND + curvature_mean + slope + annual_kwh.m2, data=as.data.frame(soil_10_30cm_shp))
-plot(lm_10_30cm$fitted.values, soilC_10_30cm_df$orgC.percent)
-plot(lm(orgC.percent ~ SAND + curvature_mean + slope + annual_kwh.m2, data=as.data.frame(soil_10_30cm_shp))) #5, 64, and 101 are problematic
-
-plot(soil_0_10cm_shp$orgC.percent, soil_0_10cm_shp$Apr2017biomass)
-text(soil_0_10cm_shp$orgC.percent, soil_0_10cm_shp$Apr2017biomass, labels = soil_0_10cm_shp$point_no, pos=1, offset =0.3)
-abline(lm(Apr2017biomass ~ orgC.percent, data = soil_0_10cm_shp), lty=2)
-summary(lm(Apr2017biomass ~ orgC.percent, data = soil_0_10cm_shp))
-lm.result <- lm(Apr2017biomass ~ orgC.percent, data = soil_0_10cm_shp)
-lm.result$residuals[order(lm.result$residuals)]
-plot(lm.result)
-summary(lm(Apr2017biomass ~ inorgC.percent, data = soil_0_10cm_shp))
-summary(lm(Apr2017biomass ~ orgC.percent, data = soil_10_30cm_shp))
-summary(lm(Apr2017biomass ~ inorgC.percent, data = soil_10_30cm_shp))
-summary(lm(Apr2017biomass ~ orgC.percent + inorgC.percent, data = soil_10_30cm_shp))
-plot(soil_10_30cm_shp$orgC.percent, soil_10_30cm_shp$Apr2017biomass, col=ifelse(soil_10_30cm_shp$N.error.percent > 5, 'red', 'black'))
-abline(lm(Apr2017biomass ~ orgC.percent, data = soil_10_30cm_shp))
-text(soil_10_30cm_shp$orgC.percent, soil_10_30cm_shp$Apr2017biomass, labels=soil_10_30cm_shp$point_no, pos=1, offset=0.3, cex=0.8)
-plot(biomass_Apr2017)
-plot(soil_10_30cm_shp, cex=soil_10_30cm_shp$orgC.percent*2, pch=1, add=T)
-plot(lm(Apr2017biomass ~ orgC.percent, data = soil_10_30cm_shp))
-plot(soil_0_10cm_shp$orgC.percent, soil_10_30cm_shp$orgC.percent)
-abline(glm(soil_10_30cm_shp$orgC.percent ~ soil_0_10cm_shp$orgC.percent))
-summary(lm(soil_10_30cm_shp$orgC.percent ~ soil_0_10cm_shp$orgC.percent))
-abline(0.5179, 0.1365, col='red')
-plot(lm(soil_10_30cm_shp$orgC.percent ~ soil_0_10cm_shp$orgC.percent))
