@@ -1,3 +1,6 @@
+##TO-DO
+#change colnames for soil_0_10cm and soil_10_30cm to match soil_0_30cm
+
 #spatial analysis
 mainDir <- 'C:/Users/smdevine/Desktop/rangeland project'
 terrainDir <- 'C:/Users/smdevine/Desktop/rangeland project/terrain_analysis_r_v3'
@@ -6,13 +9,27 @@ soilCDir <- 'C:/Users/smdevine/Desktop/rangeland project/soils_data/soil C'
 soilDataDir <- 'C:/Users/smdevine/Desktop/rangeland project/soils_data'
 soilCresults <- 'C:/Users/smdevine/Desktop/rangeland project/SoilCarbonProject/soilCresults'
 #0_30 dataset
+list.files(file.path(soilCresults, 'shapefiles'))
 soil_0_30cm_df <- read.csv(file.path(soilCresults, 'shapefiles', 'soil_0_30cm_df.csv'), stringsAsFactors = FALSE)
 library(raster)
 soil_0_30cm_shp <- SpatialPointsDataFrame(soil_0_30cm_df[,c('coords.x1', 'coords.x2')], data=soil_0_30cm_df, proj4string = CRS('+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0'))
 plot(soil_0_30cm_shp, cex=soil_0_30cm_shp$kgOrgC.m2/2, pch=20)
+
 #0-10 dataset
+soil_0_10cm_df <- read.csv(file.path(soilCresults, 'shapefiles', 'soil_0_10cm_df.csv'), stringsAsFactors = FALSE)
+soil_0_10cm_shp <- SpatialPointsDataFrame(soil_0_10cm_df[,c('coords.x1', 'coords.x2')], data=soil_0_10cm_df, proj4string = CRS('+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0'))
 
 #10-30 dataset
+soil_10_30cm_df <- read.csv(file.path(soilCresults, 'shapefiles', 'soil_10_30cm_df.csv'), stringsAsFactors = FALSE)
+soil_10_30cm_shp <- SpatialPointsDataFrame(soil_10_30cm_df[,c('coords.x1', 'coords.x2')], data=soil_10_30cm_df, proj4string = CRS('+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0'))
+
+#read-in terrain properties
+Mar2017_terrain_3m <- stack(list.files(file.path(terrainDir, 'filtered_Hogan'), full.names = TRUE))
+names(Mar2017_terrain_3m)
+names(Mar2017_terrain_3m) <- c('aspect', 'curvature_mean', 'curvature_plan', 'curvature_profile', 'elevation', 'slope', 'TCI')
+solrad_raster <- raster(file.path(solradDir, 'solrad_3m_filtered.tif'))
+solrad_raster <- solrad_raster / 1000
+Mar2017_terrain_3m$annual_kwh.m2 <- solrad_raster
 
 #now calculate distance from forage sampling points in 2017 to soil sampling points in 2018
 waypoint_forage_sp <- shapefile(file.path(forageDir, 'waypoint_forage2017.shp'))
@@ -187,17 +204,7 @@ plot(soil_0_30cm_shp$orgC_est_krig, soil_0_30cm_shp$kgOrgC.m2)
 summary(lm(kgOrgC.m2 ~ orgC_est_krig, data=soil_0_30cm_df))
 sd(soil_0_30cm_shp$kgOrgC.m2) #sd is 0.710 kgC m^-2
 
-#muliple regression prediction
-Mar2017_terrain_3m <- stack(list.files(file.path(terrainDir, 'filtered_Hogan'), full.names = TRUE))
-names(Mar2017_terrain_3m)
-names(Mar2017_terrain_3m) <- c('aspect', 'curvature_mean', 'curvature_plan', 'curvature_profile', 'elevation', 'slope', 'TCI')
-solrad_raster <- raster(file.path(solradDir, 'solrad_3m_filtered.tif'))
-solrad_raster <- solrad_raster / 1000
-Mar2017_terrain_3m$annual_kwh.m2 <- solrad_raster
-
-
-#krig residuals
-#regression krigging model
+#regression krigging model 0-30 cm
 library(relaimpo)
 library(car)
 library(gstat)
@@ -288,6 +295,71 @@ for (k in 1:20) {
 }
 rmse
 mean(rmse) #0.5748748
+
+#regression krigging model 0-10 cm
+library(relaimpo)
+library(car)
+library(gstat)
+library(spdep)
+summary(lm(kgOrgC.m2 ~ curvature_mean + elevation + slope + coords.x1 + coords.x2, data=soil_0_10cm_shp))
+orgC_lm <- lm(kgOrgC.m2 ~ curvature_mean + elevation + slope + annual_kwh.m2, data=soil_0_10cm_shp)
+summary(orgC_lm)
+vif(orgC_lm)
+orgC_terrain_pred <- predict(Mar2017_terrain_3m, orgC_lm, fun=predict)
+plot(orgC_terrain_pred)
+orgC_terrain_pred <- resample(orgC_terrain_pred, r, method='bilinear')
+soil_0_10cm_shp$org_lm_residuals <- orgC_lm$residuals
+#check autocorrelation in residuals
+autocorr_test_soil <- function(df_shp, varname, nsim) {
+  set.seed(19801976)
+  #then, make an inverse distance weighted matrix
+  idw <- 1/pointDistance(df_shp, latlon=FALSE)  #equivalent to 1/as.matrix(dist(coordinates(forage_data_sp))), see GEO200CN lab 14
+  diag(idw) <- 0 #set Inf back to zero
+  idw_list <- mat2listw(idw)
+  result <- moran.mc(df_shp[[varname]], idw_list, nsim = nsim)
+  print(result)
+  result
+  results <- cbind(result$statistic, result$p.value)
+  results <- as.data.frame(results)
+  colnames(results) <- c('Moran I statistic', 'p_value')
+  results$n_pts <- nrow(df_shp)
+  results
+}
+result <- autocorr_test_soil(soil_0_10cm_shp, 'org_lm_residuals', nsim=999)
+result #some evidence for autocorrelation in residuals
+
+soil_0_10cm_shp$org_lm_predictions <- orgC_lm$fitted.values
+summary(lm(kgOrgC.m2 ~ org_lm_predictions, data = soil_0_10cm_shp))
+plot(soil_0_10cm_shp$org_lm_predictions, soil_0_10cm_shp$kgOrgC.m2)
+orgC_reg_krig <- gstat(formula=org_lm_residuals~1, locations =  soil_0_10cm_shp)
+v <- variogram(orgC_reg_krig, width=21)
+plot(v)
+
+fve <- fit.variogram(v, vgm(psill=0.1, model="Sph", range=150, nugget = 0.25)) #finally, convergence!
+fve
+#model      psill    range
+#1   Nug 0.23304615   0.0000
+#2   Sph 0.07379567 168.1028
+plot(variogramLine(fve, 100), type='l', ylim=c(0,0.7))
+points(v[,2:3], pch=20, col='red')
+regkrig_model <- gstat(formula=org_lm_residuals ~ 1, locations = soil_0_10cm_shp, model=fve)
+# predicted values
+orgC_res_regkrig <- predict(regkrig_model, as(r, 'SpatialGrid'))
+## [using ordinary kriging]
+spplot(orgC_res_regkrig)
+orgC_res_regkrig <- brick(orgC_res_regkrig)
+plot(orgC_res_regkrig$var1.pred)
+plot(soil_0_10cm_shp$org_lm_residuals, soil_0_10cm_shp$kgOrgC.m2)
+orgC_regkrig_est <- orgC_res_regkrig$var1.pred + orgC_terrain_pred
+plot(orgC_regkrig_est)
+soil_0_10cm_shp$orgC_est_regkrig <- extract(orgC_regkrig_est, soil_0_10cm_shp)
+plot(soil_0_10cm_shp$orgC_est_regkrig, soil_0_10cm_shp$kgOrgC.m2)
+summary(lm(kgOrgC.m2 ~ orgC_est_regkrig, data=soil_0_10cm_shp)) #r^2=0.57
+all_forage_sp$orgC_est_regkrig <- extract(orgC_regkrig_est, all_forage_sp)
+plot(all_forage_sp$orgC_est_regkrig, all_forage_sp$peak_2017)
+abline(lm(peak_2017 ~ orgC_est_regkrig, data = all_forage_sp), lty=2)
+summary(lm(peak_2017 ~ orgC_est_regkrig, data = all_forage_sp)) #r^2=0.24
+
 
 
 #random forest test
