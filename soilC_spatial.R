@@ -8,6 +8,8 @@ solradDir <- 'C:/Users/smdevine/Desktop/rangeland project/SoilCarbonProject/solr
 soilCDir <- 'C:/Users/smdevine/Desktop/rangeland project/soils_data/soil C'
 soilDataDir <- 'C:/Users/smdevine/Desktop/rangeland project/soils_data'
 soilCresults <- 'C:/Users/smdevine/Desktop/rangeland project/SoilCarbonProject/soilCresults'
+spatialforageDir <- 'C:/Users/smdevine/Desktop/rangeland project/clip_plots/results'
+forageDir <- 'C:/Users/smdevine/Desktop/rangeland project/clip_plots'
 #0_30 dataset
 list.files(file.path(soilCresults, 'shapefiles'))
 soil_0_30cm_df <- read.csv(file.path(soilCresults, 'shapefiles', 'soil_0_30cm_df.csv'), stringsAsFactors = FALSE)
@@ -15,13 +17,15 @@ library(raster)
 soil_0_30cm_shp <- SpatialPointsDataFrame(soil_0_30cm_df[,c('coords.x1', 'coords.x2')], data=soil_0_30cm_df, proj4string = CRS('+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0'))
 plot(soil_0_30cm_shp, cex=soil_0_30cm_shp$kgOrgC.m2/2, pch=20)
 
-#0-10 dataset
+#0-10 dataset (modified orgC, TN, clay, IC, and P colnames to match naming conventions for 0-30)
 soil_0_10cm_df <- read.csv(file.path(soilCresults, 'shapefiles', 'soil_0_10cm_df.csv'), stringsAsFactors = FALSE)
 soil_0_10cm_shp <- SpatialPointsDataFrame(soil_0_10cm_df[,c('coords.x1', 'coords.x2')], data=soil_0_10cm_df, proj4string = CRS('+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0'))
+plot(soil_0_10cm_shp, cex=soil_0_10cm_shp$kgOrgC.m2/1.5, pch=20)
 
-#10-30 dataset
+#10-30 dataset (modified orgC, TN, clay, IC, and P colnames to match naming conventions for 0-30)
 soil_10_30cm_df <- read.csv(file.path(soilCresults, 'shapefiles', 'soil_10_30cm_df.csv'), stringsAsFactors = FALSE)
 soil_10_30cm_shp <- SpatialPointsDataFrame(soil_10_30cm_df[,c('coords.x1', 'coords.x2')], data=soil_10_30cm_df, proj4string = CRS('+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0'))
+plot(soil_10_30cm_shp, cex=soil_10_30cm_shp$kgOrgC.m2/1.5, pch=20)
 
 #read-in terrain properties
 Mar2017_terrain_3m <- stack(list.files(file.path(terrainDir, 'filtered_Hogan'), full.names = TRUE))
@@ -32,14 +36,25 @@ solrad_raster <- solrad_raster / 1000
 Mar2017_terrain_3m$annual_kwh.m2 <- solrad_raster
 
 #now calculate distance from forage sampling points in 2017 to soil sampling points in 2018
-waypoint_forage_sp <- shapefile(file.path(forageDir, 'waypoint_forage2017.shp'))
-sensor_forage_sp <- shapefile(file.path(forageDir, 'sensor_forage2017.shp'))
+forage_data <- read.csv(file.path(forageDir, 'summaries', 'forage2017_2018_summary.csv'), stringsAsFactors=FALSE)
+waypoint_forage_sp <- shapefile(file.path(spatialforageDir, 'waypoint_forage2017.shp'))
+sensor_forage_sp <- shapefile(file.path(spatialforageDir, 'sensor_forage2017.shp'))
+sensor_forage_sp <- merge(sensor_forage_sp, forage_data[,c(1, 6:9)], by='location')
 names(waypoint_forage_sp)
 names(sensor_forage_sp)
+waypoint_forage_sp$clp011618 <- NA
+waypoint_forage_sp$clp021518 <- NA
+waypoint_forage_sp$clp032218 <- NA
+waypoint_forage_sp$clp041518 <- NA
 all_forage_sp <- rbind(sensor_forage_sp, waypoint_forage_sp)
 all_forage_sp <- all_forage_sp[-which(all_forage_sp$location=='B01'),] #outlier near road
 all_forage_sp$peak_2017 <- apply(as.data.frame(all_forage_sp)[,2:5], 1, max)
+all_forage_sp$peak_2018 <- apply(as.data.frame(all_forage_sp)[,6:9], 1, max)
+hist(all_forage_sp$peak_2017)
+hist(all_forage_sp$peak_2018)
 plot(all_forage_sp, cex=all_forage_sp$peak_2017/2000, col='red', pch=2, add=TRUE)
+shapefile(all_forage_sp, file.path(spatialforageDir, 'all_pts_2017_2018.shp'))
+
 distance_matrix <- as.data.frame(pointDistance(coordinates(all_forage_sp)[,1:2], coordinates(soil_0_30cm_shp)[,1:2], lonlat = FALSE))
 colnames(distance_matrix) <- paste('pt_', soil_0_30cm_shp$point_no)
 distance_matrix <- cbind(clip_plot=all_forage_sp$location, distance_matrix)
