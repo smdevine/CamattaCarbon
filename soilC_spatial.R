@@ -1,5 +1,4 @@
 ##TO-DO
-#change colnames for soil_0_10cm and soil_10_30cm to match soil_0_30cm
 
 #spatial analysis
 mainDir <- 'C:/Users/smdevine/Desktop/rangeland project'
@@ -27,6 +26,9 @@ soil_10_30cm_df <- read.csv(file.path(soilCresults, 'shapefiles', 'soil_10_30cm_
 soil_10_30cm_shp <- SpatialPointsDataFrame(soil_10_30cm_df[,c('coords.x1', 'coords.x2')], data=soil_10_30cm_df, proj4string = CRS('+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0'))
 plot(soil_10_30cm_shp, cex=soil_10_30cm_shp$kgOrgC.m2/1.5, pch=20)
 
+#create grid for spatial predictions
+r <- raster(xmn=(xmin(soil_0_30cm_shp)-20), xmx=(xmax(soil_0_30cm_shp)+20), ymn=(ymin(soil_0_30cm_shp) - 20), ymx=(ymax(soil_0_30cm_shp) + 20), resolution=3, crs=crs(soil_0_30cm_shp))
+
 #read-in terrain properties
 Mar2017_terrain_3m <- stack(list.files(file.path(terrainDir, 'filtered_Hogan'), full.names = TRUE))
 names(Mar2017_terrain_3m)
@@ -36,24 +38,26 @@ solrad_raster <- solrad_raster / 1000
 Mar2017_terrain_3m$annual_kwh.m2 <- solrad_raster
 
 #now calculate distance from forage sampling points in 2017 to soil sampling points in 2018
-forage_data <- read.csv(file.path(forageDir, 'summaries', 'forage2017_2018_summary.csv'), stringsAsFactors=FALSE)
-waypoint_forage_sp <- shapefile(file.path(spatialforageDir, 'waypoint_forage2017.shp'))
-sensor_forage_sp <- shapefile(file.path(spatialforageDir, 'sensor_forage2017.shp'))
-sensor_forage_sp <- merge(sensor_forage_sp, forage_data[,c(1, 6:9)], by='location')
-names(waypoint_forage_sp)
-names(sensor_forage_sp)
-waypoint_forage_sp$clp011618 <- NA
-waypoint_forage_sp$clp021518 <- NA
-waypoint_forage_sp$clp032218 <- NA
-waypoint_forage_sp$clp041518 <- NA
-all_forage_sp <- rbind(sensor_forage_sp, waypoint_forage_sp)
-all_forage_sp <- all_forage_sp[-which(all_forage_sp$location=='B01'),] #outlier near road
-all_forage_sp$peak_2017 <- apply(as.data.frame(all_forage_sp)[,2:5], 1, max)
-all_forage_sp$peak_2018 <- apply(as.data.frame(all_forage_sp)[,6:9], 1, max)
-hist(all_forage_sp$peak_2017)
-hist(all_forage_sp$peak_2018)
-plot(all_forage_sp, cex=all_forage_sp$peak_2017/2000, col='red', pch=2, add=TRUE)
-shapefile(all_forage_sp, file.path(spatialforageDir, 'all_pts_2017_2018.shp'))
+# forage_data <- read.csv(file.path(forageDir, 'summaries', 'forage2017_2018_summary.csv'), stringsAsFactors=FALSE)
+# waypoint_forage_sp <- shapefile(file.path(spatialforageDir, 'waypoint_forage2017.shp'))
+# sensor_forage_sp <- shapefile(file.path(spatialforageDir, 'sensor_forage2017.shp'))
+# sensor_forage_sp <- merge(sensor_forage_sp, forage_data[,c(1, 6:9)], by='location')
+# names(waypoint_forage_sp)
+# names(sensor_forage_sp)
+# waypoint_forage_sp$clp011618 <- NA
+# waypoint_forage_sp$clp021518 <- NA
+# waypoint_forage_sp$clp032218 <- NA
+# waypoint_forage_sp$clp041518 <- NA
+# all_forage_sp <- rbind(sensor_forage_sp, waypoint_forage_sp)
+# all_forage_sp <- all_forage_sp[-which(all_forage_sp$location=='B01'),] #outlier near road
+# all_forage_sp$peak_2017 <- apply(as.data.frame(all_forage_sp)[,2:5], 1, max)
+# all_forage_sp$peak_2018 <- apply(as.data.frame(all_forage_sp)[,6:9], 1, max)
+# hist(all_forage_sp$peak_2017)
+# hist(all_forage_sp$peak_2018)
+# plot(all_forage_sp, cex=all_forage_sp$peak_2017/2000, col='red', pch=2, add=TRUE)
+# shapefile(all_forage_sp, file.path(spatialforageDir, 'all_pts_2017_2018.shp'))
+all_forage_sp <- shapefile(file.path(spatialforageDir, 'all_pts_2017_2018.shp'))
+
 
 distance_matrix <- as.data.frame(pointDistance(coordinates(all_forage_sp)[,1:2], coordinates(soil_0_30cm_shp)[,1:2], lonlat = FALSE))
 colnames(distance_matrix) <- paste('pt_', soil_0_30cm_shp$point_no)
@@ -227,6 +231,7 @@ library(spdep)
 summary(lm(kgOrgC.m2 ~ curvature_mean + elevation + slope + coords.x1 + coords.x2, data=soil_0_30cm_shp))
 orgC_lm <- lm(kgOrgC.m2 ~ curvature_mean + elevation + slope + annual_kwh.m2, data=soil_0_30cm_shp)
 summary(orgC_lm)
+summary(lm(kgOrgC.m2 ~ curvature_mean + elevation + slope + annual_kwh.m2 + WMPD_mm, data=soil_0_30cm_shp))
 vif(orgC_lm)
 orgC_terrain_pred <- predict(Mar2017_terrain_3m, orgC_lm, fun=predict)
 plot(orgC_terrain_pred)
@@ -246,10 +251,51 @@ autocorr_test_soil <- function(df_shp, varname, nsim) {
   results <- as.data.frame(results)
   colnames(results) <- c('Moran I statistic', 'p_value')
   results$n_pts <- nrow(df_shp)
+  results$varname <- varname
   results
 }
-result <- autocorr_test_soil(soil_0_30cm_shp, 'org_lm_residuals', nsim=999)
-result #some evidence for autocorrelation in residuals
+names(soil_0_10cm_shp)
+soilC_0_30_autocorr <- autocorr_test_soil(soil_0_30cm_shp, 'kgOrgC.m2', nsim = 999) 
+soilC_0_30_autocorr
+#Monte-Carlo simulation of Moran I
+soil_0_30_autocorr <- do.call(rbind, lapply(c('kgOrgC.m2', 'kgTN.m2', 'kgClay.m2', 'WMPD_mm', 'sand_wtd', 'silt_wtd', 'clay_wtd', 'kgIC.m2', 'gP.m2'), function(x) autocorr_test_soil(soil_0_30cm_shp, varname = x, nsim = 999)))
+soil_0_30_autocorr
+
+names(soil_0_10cm_shp)
+soil_0_10_autocorr <- do.call(rbind, lapply(c('kgOrgC.m2', 'kgTN.m2', 'kgClay.m2', 'WMPD_mm', 'SAND', 'SILT', 'CLAY', 'kgIC.m2', 'gP.m2'), function(x) autocorr_test_soil(soil_0_10cm_shp, varname = x, nsim = 999)))
+soil_0_10_autocorr
+
+soil_10_30_autocorr <- do.call(rbind, lapply(c('kgOrgC.m2', 'kgTN.m2', 'kgClay.m2', 'WMPD_mm', 'SAND', 'SILT', 'CLAY', 'kgIC.m2', 'gP.m2'), function(x) autocorr_test_soil(soil_10_30cm_shp, varname = x, nsim = 999)))
+soil_10_30_autocorr
+
+#data:  df_shp[[varname]] 
+#weights: idw_list  
+#number of simulations + 1: 1000 
+
+#statistic = 0.033509, observed rank = 999, p-value = 0.001
+#alternative hypothesis: greater
+soilC_10_30_autocorr <- autocorr_test_soil(soil_10_30cm_shp, 'kgOrgC.m2', nsim = 999) 
+#Monte-Carlo simulation of Moran I
+
+#data:  df_shp[[varname]] 
+#weights: idw_list  
+#number of simulations + 1: 1000 
+
+#statistic = 0.048943, observed rank = 1000, p-value = 0.001
+#alternative hypothesis: greater
+
+soilC_0_10_autocorr <- autocorr_test_soil(soil_0_10cm_shp, 'kgOrgC.m2', nsim = 999) 
+#Monte-Carlo simulation of Moran I
+
+#data:  df_shp[[varname]] 
+#weights: idw_list  
+#number of simulations + 1: 1000 
+
+#statistic = 0.015015, observed rank = 985, p-value = 0.015
+#alternative hypothesis: greater
+
+soilCresids_0_30_autocorr <- autocorr_test_soil(soil_0_30cm_shp, 'org_lm_residuals', nsim=999)
+
 
 soil_0_30cm_shp$org_lm_predictions <- orgC_lm$fitted.values
 summary(lm(kgOrgC.m2 ~ org_lm_predictions, data = soil_0_30cm_shp))
@@ -282,8 +328,11 @@ all_forage_sp$orgC_est_regkrig <- extract(orgC_regkrig_est, all_forage_sp)
 plot(all_forage_sp$orgC_est_regkrig, all_forage_sp$peak_2017)
 abline(lm(peak_2017 ~ orgC_est_regkrig, data = all_forage_sp), lty=2)
 summary(lm(peak_2017 ~ orgC_est_regkrig, data = all_forage_sp)) #r^2=0.24
+plot(all_forage_sp$orgC_est_regkrig, all_forage_sp$peak_2018)
+abline(lm(peak_2018 ~ orgC_est_regkrig, data = all_forage_sp), lty=2)
+summary(lm(peak_2018 ~ orgC_est_regkrig, data = all_forage_sp))
 
-#cross-validate regression krigging
+#cross-validate regression krigging for 0-30 cm dataset
 set.seed(20161203)
 library(dismo)
 kf <- kfold(soil_0_30cm_shp, k=20)
@@ -312,37 +361,18 @@ rmse
 mean(rmse) #0.5748748
 
 #regression krigging model 0-10 cm
-library(relaimpo)
-library(car)
-library(gstat)
-library(spdep)
 summary(lm(kgOrgC.m2 ~ curvature_mean + elevation + slope + coords.x1 + coords.x2, data=soil_0_10cm_shp))
 orgC_lm <- lm(kgOrgC.m2 ~ curvature_mean + elevation + slope + annual_kwh.m2, data=soil_0_10cm_shp)
 summary(orgC_lm)
 vif(orgC_lm)
+summary(lm(kgOrgC.m2 ~ curvature_mean + elevation + slope + annual_kwh.m2 + kgClay.m2, data=soil_0_10cm_shp))
 orgC_terrain_pred <- predict(Mar2017_terrain_3m, orgC_lm, fun=predict)
 plot(orgC_terrain_pred)
 orgC_terrain_pred <- resample(orgC_terrain_pred, r, method='bilinear')
 soil_0_10cm_shp$org_lm_residuals <- orgC_lm$residuals
 #check autocorrelation in residuals
-autocorr_test_soil <- function(df_shp, varname, nsim) {
-  set.seed(19801976)
-  #then, make an inverse distance weighted matrix
-  idw <- 1/pointDistance(df_shp, latlon=FALSE)  #equivalent to 1/as.matrix(dist(coordinates(forage_data_sp))), see GEO200CN lab 14
-  diag(idw) <- 0 #set Inf back to zero
-  idw_list <- mat2listw(idw)
-  result <- moran.mc(df_shp[[varname]], idw_list, nsim = nsim)
-  print(result)
-  result
-  results <- cbind(result$statistic, result$p.value)
-  results <- as.data.frame(results)
-  colnames(results) <- c('Moran I statistic', 'p_value')
-  results$n_pts <- nrow(df_shp)
-  results
-}
 result <- autocorr_test_soil(soil_0_10cm_shp, 'org_lm_residuals', nsim=999)
 result #some evidence for autocorrelation in residuals
-
 soil_0_10cm_shp$org_lm_predictions <- orgC_lm$fitted.values
 summary(lm(kgOrgC.m2 ~ org_lm_predictions, data = soil_0_10cm_shp))
 plot(soil_0_10cm_shp$org_lm_predictions, soil_0_10cm_shp$kgOrgC.m2)
@@ -370,15 +400,65 @@ plot(orgC_regkrig_est)
 soil_0_10cm_shp$orgC_est_regkrig <- extract(orgC_regkrig_est, soil_0_10cm_shp)
 plot(soil_0_10cm_shp$orgC_est_regkrig, soil_0_10cm_shp$kgOrgC.m2)
 summary(lm(kgOrgC.m2 ~ orgC_est_regkrig, data=soil_0_10cm_shp)) #r^2=0.57
-all_forage_sp$orgC_est_regkrig <- extract(orgC_regkrig_est, all_forage_sp)
-plot(all_forage_sp$orgC_est_regkrig, all_forage_sp$peak_2017)
-abline(lm(peak_2017 ~ orgC_est_regkrig, data = all_forage_sp), lty=2)
-summary(lm(peak_2017 ~ orgC_est_regkrig, data = all_forage_sp)) #r^2=0.24
+all_forage_sp$orgC_est_regkrig_10 <- extract(orgC_regkrig_est, all_forage_sp)
+plot(all_forage_sp$orgC_est_regkrig_10, all_forage_sp$peak_2017)
+abline(lm(peak_2017 ~ orgC_est_regkrig_10, data = all_forage_sp), lty=2)
+summary(lm(peak_2017 ~ orgC_est_regkrig_10, data = all_forage_sp)) #r^2=0.29
+plot(all_forage_sp$orgC_est_regkrig_10, all_forage_sp$peak_2018)
+abline(lm(peak_2018 ~ orgC_est_regkrig_10, data = all_forage_sp), lty=2)
+summary(lm(peak_2018 ~ orgC_est_regkrig_10, data = all_forage_sp)) #r^2=0.14; p-val=0.15
 
+#10-30 cm regression kriging
+summary(lm(kgOrgC.m2 ~ curvature_mean + elevation + slope + coords.x1 + coords.x2, data=soil_10_30cm_shp)) #r2=0.45
+orgC_lm <- lm(kgOrgC.m2 ~ curvature_mean + elevation + slope + annual_kwh.m2, data=soil_10_30cm_shp)
+summary(orgC_lm) #r^2=0.49
+vif(orgC_lm)
+summary(lm(kgOrgC.m2 ~ curvature_mean + elevation + slope + annual_kwh.m2 + kgClay.m2, data=soil_10_30cm_shp)) #r2=0.54
+orgC_terrain_pred <- predict(Mar2017_terrain_3m, orgC_lm, fun=predict)
+plot(orgC_terrain_pred)
+orgC_terrain_pred <- resample(orgC_terrain_pred, r, method='bilinear')
+soil_10_30cm_shp$org_lm_residuals <- orgC_lm$residuals
+#check autocorrelation in residuals
+result <- autocorr_test_soil(soil_10_30cm_shp, 'org_lm_residuals', nsim=999)
+result #some evidence for autocorrelation in residuals
+soil_10_30cm_shp$org_lm_predictions <- orgC_lm$fitted.values
+summary(lm(kgOrgC.m2 ~ org_lm_predictions, data = soil_10_30cm_shp))
+plot(soil_10_30cm_shp$org_lm_predictions, soil_10_30cm_shp$kgOrgC.m2)
+orgC_reg_krig <- gstat(formula=org_lm_residuals~1, locations =  soil_10_30cm_shp)
+v <- variogram(orgC_reg_krig, width=15)
+plot(v)
 
+fve <- fit.variogram(v, vgm(psill=0.1, model="Sph", range=150, nugget = 0.25)) #finally, convergence!
+fve
+#model      psill    range
+#1   Nug 0.23304615   0.0000
+#2   Sph 0.07379567 168.1028
+plot(variogramLine(fve, 100), type='l', ylim=c(0,0.7))
+points(v[,2:3], pch=20, col='red')
+regkrig_model <- gstat(formula=org_lm_residuals ~ 1, locations = soil_10_30cm_shp, model=fve)
+# predicted values
+orgC_res_regkrig <- predict(regkrig_model, as(r, 'SpatialGrid'))
+## [using ordinary kriging]
+spplot(orgC_res_regkrig)
+orgC_res_regkrig <- brick(orgC_res_regkrig)
+plot(orgC_res_regkrig$var1.pred)
+plot(soil_10_30cm_shp$org_lm_residuals, soil_10_30cm_shp$kgOrgC.m2)
+orgC_regkrig_est <- orgC_res_regkrig$var1.pred + orgC_terrain_pred
+plot(orgC_regkrig_est)
+soil_10_30cm_shp$orgC_est_regkrig <- extract(orgC_regkrig_est, soil_10_30cm_shp)
+plot(soil_10_30cm_shp$orgC_est_regkrig, soil_10_30cm_shp$kgOrgC.m2)
+summary(lm(kgOrgC.m2 ~ orgC_est_regkrig, data=soil_10_30cm_shp)) #r^2=0.62
+all_forage_sp$orgC_est_regkrig_1030 <- extract(orgC_regkrig_est, all_forage_sp)
+plot(all_forage_sp$orgC_est_regkrig_1030, all_forage_sp$peak_2017)
+abline(lm(peak_2017 ~ orgC_est_regkrig_1030, data = all_forage_sp), lty=2)
+summary(lm(peak_2017 ~ orgC_est_regkrig_1030, data = all_forage_sp)) #r^2=0.29
+plot(all_forage_sp$orgC_est_regkrig_1030, all_forage_sp$peak_2018)
+abline(lm(peak_2018 ~ orgC_est_regkrig_1030, data = all_forage_sp), lty=2)
+summary(lm(peak_2018 ~ orgC_est_regkrig_1030, data = all_forage_sp)) #r^2=0.07, p.val=0.31
 
 #random forest test
-tuneRF(x=as.data.frame(soil_0_10cm_shp)[,c('SAND', 'curvature_mean', 'slope', 'annual_kwh.m2')], soil_0_10cm_shp$orgC.percent, stepFactor = 1)
+
+tuneRF(x=as.data.frame(soil_0_30cm_shp)[,c('elevation', 'curvature_mean', 'slope', 'annual_kwh.m2')], soil_0_30cm_shp$kgOrgC.m2, stepFactor = 1)
 randomForest(CLAY ~ curvature_mean + slope + annual_kwh.m2 + elevation, data = soilC_0_10cm_df, mtry=1)
 tuneRF(x=as.data.frame(soil_0_10cm_shp)[,c('elevation', 'curvature_mean', 'slope', 'annual_kwh.m2')], soil_0_10cm_shp$CLAY, stepFactor = 1.5)
 randomForest(SAND ~ curvature_mean + slope + annual_kwh.m2 + elevation, data = soilC_0_10cm_df, mtry=1)
