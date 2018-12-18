@@ -88,41 +88,114 @@ null #0.706
 set.seed(20161203)
 library(dismo)
 kf <- kfold(soil_0_30cm_shp, k=20)
-rmse <- rep(NA, 20)
-for (k in 1:20) {
-  tst <- soil_0_30cm_shp[kf == k, ]
-  trn <- soil_0_30cm_shp[kf != k, ]
-  rmse[k] <- RMSE(trn$kgOrgC.m2, mean(tst$kgOrgC.m2))
+
+crossval_null <- function(df_pts, varname) {
+  rmse <- rep(NA, 20)
+  for (k in 1:20) {
+    tst <- df_pts[kf == k, ]
+    trn <- df_pts[kf != k, ]
+    rmse[k] <- RMSE(trn[[varname]], mean(tst[[varname]]))
+  }
+  rmse
 }
-rmse
-mean(rmse) #0.7816799
+orgC_0_30_rmse_null <- crossval_null(soil_0_30cm_shp, 'kgOrgC.m2')
+mean(orgC_0_30_rmse_null) #0.782
+orgC_0_10_rmse_null <- crossval_null(soil_0_10cm_shp, 'kgOrgC.m2')
+mean(orgC_0_10_rmse_null) #0.472
+orgC_10_30_rmse_null <- crossval_null(soil_10_30cm_shp, 'kgOrgC.m2')
+mean(orgC_10_30_rmse_null) #0.452
+
+clay_0_30_rmse_null <- crossval_null(soil_0_30cm_shp, 'clay_wtd')
+mean(clay_0_30_rmse_null) #5.2% clay
+clay_0_10_rmse_null <- crossval_null(soil_0_10cm_shp, 'CLAY')
+mean(clay_0_10_rmse_null) #4.5% clay
+clay_10_30_rmse_null <- crossval_null(soil_10_30cm_shp, 'CLAY')
+mean(clay_10_30_rmse_null) #5.9% clay
+
+WMPD_0_30_rmse_null <- crossval_null(soil_0_30cm_shp, 'WMPD_mm')
+mean(WMPD_0_30_rmse_null) #0.118 mm
+WMPD_0_10_rmse_null <- crossval_null(soil_0_10cm_shp, 'WMPD_mm')
+mean(WMPD_0_10_rmse_null) #0.110 mm
+WMPD_10_30_rmse_null <- crossval_null(soil_10_30cm_shp, 'WMPD_mm')
+mean(WMPD_10_30_rmse_null) #0.129 mm
+
+IC_0_30_rmse_null <- crossval_null(soil_0_30cm_shp, 'kgIC.m2')
+mean(IC_0_30_rmse_null) #0.876 kg IC m2
+IC_0_10_rmse_null <- crossval_null(soil_0_10cm_shp, 'kgIC.m2')
+mean(IC_0_10_rmse_null) #0.427 kg IC m2
+IC_10_30_rmse_null <- crossval_null(soil_10_30cm_shp, 'kgIC.m2')
+mean(IC_10_30_rmse_null) #0.551 kg IC m2
+
+soilP_0_30_rmse_null <- crossval_null(soil_0_30cm_shp, 'gP.m2')
+mean(soilP_0_30_rmse_null) #2.98 g soilP m2
+soilP_0_10_rmse_null <- crossval_null(soil_0_10cm_shp, 'gP.m2')
+mean(soilP_0_10_rmse_null) #2.20 g soilP m2
+soilP_10_30_rmse_null <- crossval_null(soil_10_30cm_shp, 'gP.m2')
+mean(soilP_10_30_rmse_null) #1.12 g P soilP m2
 
 #multiple linear regression CV test
 summary(lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + elevation, data =  soil_0_30cm_shp))
-rmse <- rep(NA, 20)
-for (k in 1:20) {
-  tst <- soil_0_30cm_shp[kf == k, ]
-  trn <- soil_0_30cm_shp[kf != k, ]
-  kgOrgC_0_30cm_lm <- lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + elevation, data = trn)
-  print(summary(kgOrgC_0_30cm_lm))
-  orgC_tst_pred <- predict.lm(kgOrgC_0_30cm_lm, tst)
-  rmse[k] <- RMSE(tst$kgOrgC.m2, orgC_tst_pred)
+summary(lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + elevation, data =  soil_0_10cm_shp))
+summary(lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + elevation, data =  soil_10_30cm_shp))
+crossval_lm <- function(df_pts, varname) {
+  rmse <- rep(NA, 20)
+  for (k in 1:20) {
+    tst <- df_pts[kf == k, ]
+    trn <- df_pts[kf != k, ]
+    varname_lm <- lm(as.formula(paste(varname, '~ curvature_mean + slope + annual_kwh.m2 + elevation')), data = trn)
+    print(summary(varname_lm))
+    varname_tst_pred <- predict.lm(varname_lm, tst)
+    rmse[k] <- RMSE(tst[[varname]], varname_tst_pred)
+  }
+  rmse
 }
-rmse
-mean(rmse) #0.5330258
+orgC_0_30_rmse_lm <- crossval_lm(soil_0_30cm_shp, 'kgOrgC.m2')
+mean(orgC_0_30_rmse_lm) #0.533 kg orgC m2
+orgC_0_10_rmse_lm <- crossval_lm(soil_0_10cm_shp, 'kgOrgC.m2')
+mean(orgC_0_10_rmse_lm) #0.363 kg orgC m2
+orgC_10_30_rmse_lm <- crossval_lm(soil_10_30cm_shp, 'kgOrgC.m2')
+mean(orgC_10_30_rmse_lm) #0.291 kg orgC m2
+
+clay_0_30_rmse_lm <- crossval_lm(soil_0_30cm_shp, 'clay_wtd')
+mean(clay_0_30_rmse_lm) #4.0% clay
+clay_0_10_rmse_lm <- crossval_lm(soil_0_10cm_shp, 'CLAY')
+mean(clay_0_10_rmse_lm) #3.5% clay
+clay_10_30_rmse_lm <- crossval_lm(soil_10_30cm_shp, 'CLAY')
+mean(clay_10_30_rmse_lm) #4.7% clay
+
+WMPD_0_30_rmse_lm <- crossval_lm(soil_0_30cm_shp, 'WMPD_mm')
+mean(WMPD_0_30_rmse_lm) #0.094 mm
+WMPD_0_10_rmse_lm <- crossval_lm(soil_0_10cm_shp, 'WMPD_mm')
+mean(WMPD_0_10_rmse_lm) #0.091 mm
+WMPD_10_30_rmse_lm <- crossval_lm(soil_10_30cm_shp, 'WMPD_mm')
+mean(WMPD_10_30_rmse_lm) #0.102 mm
+
+IC_0_30_rmse_lm <- crossval_lm(soil_0_30cm_shp, 'kgIC.m2')
+mean(IC_0_30_rmse_lm) #0.703 kg IC m2
+IC_0_10_rmse_lm <- crossval_lm(soil_0_10cm_shp, 'kgIC.m2')
+mean(IC_0_10_rmse_lm) #0.367 kg IC m2
+IC_10_30_rmse_lm <- crossval_lm(soil_10_30cm_shp, 'kgIC.m2')
+mean(IC_10_30_rmse_lm) #0.432 kg IC m2
+
+soilP_0_30_rmse_lm <- crossval_lm(soil_0_30cm_shp, 'gP.m2')
+mean(soilP_0_30_rmse_lm) #2.18 g soilP m2
+soilP_0_10_rmse_lm <- crossval_lm(soil_0_10cm_shp, 'gP.m2')
+mean(soilP_0_10_rmse_lm) #1.66 g soilP m2
+soilP_10_30_rmse_lm <- crossval_lm(soil_10_30cm_shp, 'gP.m2')
+mean(soilP_10_30_rmse_lm) #0.83 g P soilP m2
 
 #multiple linear regression CV test all vars
-summary(lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + elevation + curvature_profile  + TCI, data = soil_0_30cm_shp))
-rmse <- rep(NA, 20)
-for (k in 1:20) {
-  tst <- soil_0_30cm_shp[kf == k, ]
-  trn <- soil_0_30cm_shp[kf != k, ]
-  kgOrgC_0_30cm_lm <- lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + elevation + curvature_profile  + TCI, data = trn)
-  orgC_tst_pred <- predict.lm(kgOrgC_0_30cm_lm, tst)
-  rmse[k] <- RMSE(tst$kgOrgC.m2, orgC_tst_pred)
-}
-rmse
-mean(rmse) #0.5418224
+# summary(lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + elevation + curvature_profile  + TCI, data = soil_0_30cm_shp))
+# rmse <- rep(NA, 20)
+# for (k in 1:20) {
+#   tst <- soil_0_30cm_shp[kf == k, ]
+#   trn <- soil_0_30cm_shp[kf != k, ]
+#   kgOrgC_0_30cm_lm <- lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + elevation + curvature_profile  + TCI, data = trn)
+#   orgC_tst_pred <- predict.lm(kgOrgC_0_30cm_lm, tst)
+#   rmse[k] <- RMSE(tst$kgOrgC.m2, orgC_tst_pred)
+# }
+# rmse
+# mean(rmse) #0.5418224
 
 #test with clay as predictor
 summary(lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + clay_wtd, data = soil_0_30cm_shp)) #r^2=0.48
@@ -188,36 +261,103 @@ for (k in 1:20) {
 opt_results
 apply(opt_results, 2, mean)
 
-#cross-validate idw model
-rmse <- rep(NA, 20)
-for (k in 1:20) {
-  tst <- soil_0_30cm_shp[kf == k, ]
-  trn <- soil_0_30cm_shp[kf != k, ]
-  gs <- gstat(formula=kgOrgC.m2~1, locations=trn, maxdist = 40, set=list(idp=1.7))
-  p <- predict(gs, tst)
-  rmse[k] <- RMSE(tst$kgOrgC.m2, p$var1.pred)
-}
-rmse
-mean(rmse) #0.6244324
 
+#cross-validate idw model
+crossval_idw <- function(df_pts, varname, idp=1.7, maxdist=40) {
+  rmse <- rep(NA, 20)
+  for (k in 1:20) {
+    tst <- df_pts[kf == k, ]
+    trn <- df_pts[kf != k, ]
+    gs <- gstat(formula=as.formula(paste(varname, '~1')), locations=trn, maxdist = maxdist, set=list(idp=idp))
+    p <- predict(gs, tst)
+    rmse[k] <- RMSE(tst[[varname]], p$var1.pred)
+  }
+  rmse
+}
+orgC_0_30_rmse_idw <- crossval_idw(soil_0_30cm_shp, 'kgOrgC.m2')
+mean(orgC_0_30_rmse_idw) #0.5989389
+orgC_0_10_rmse_idw <- crossval_idw(soil_0_10cm_shp, 'kgOrgC.m2')
+mean(orgC_0_10_rmse_idw) #0.3868148
+orgC_10_30_rmse_idw <- crossval_idw(soil_10_30cm_shp, 'kgOrgC.m2')
+mean(orgC_10_30_rmse_idw) #0.3314461
+
+clay_0_30_rmse_idw <- crossval_idw(soil_0_30cm_shp, 'clay_wtd')
+mean(clay_0_30_rmse_idw) #2.9% clay
+clay_0_10_rmse_idw <- crossval_idw(soil_0_10cm_shp, 'CLAY')
+mean(clay_0_10_rmse_idw) #2.8% clay
+clay_10_30_rmse_idw <- crossval_idw(soil_10_30cm_shp, 'CLAY')
+mean(clay_10_30_rmse_idw) #3.4% clay
+
+WMPD_0_30_rmse_idw <- crossval_idw(soil_0_30cm_shp, 'WMPD_mm')
+mean(WMPD_0_30_rmse_idw) #0.055 mm
+WMPD_0_10_rmse_idw <- crossval_idw(soil_0_10cm_shp, 'WMPD_mm')
+mean(WMPD_0_10_rmse_idw) #0.057 mm
+WMPD_10_30_rmse_idw <- crossval_idw(soil_10_30cm_shp, 'WMPD_mm')
+mean(WMPD_10_30_rmse_idw) #0.064 mm
+
+IC_0_30_rmse_idw <- crossval_idw(soil_0_30cm_shp, 'kgIC.m2')
+mean(IC_0_30_rmse_idw) #0.659 kg IC m2
+IC_0_10_rmse_idw <- crossval_idw(soil_0_10cm_shp, 'kgIC.m2')
+mean(IC_0_10_rmse_idw) #0.345 kg IC m2
+IC_10_30_rmse_idw <- crossval_idw(soil_10_30cm_shp, 'kgIC.m2')
+mean(IC_10_30_rmse_idw) #0.418 kg IC m2
+
+soilP_0_30_rmse_idw <- crossval_idw(soil_0_30cm_shp, 'gP.m2')
+mean(soilP_0_30_rmse_idw) #2.03 g soilP m2
+soilP_0_10_rmse_idw <- crossval_idw(soil_0_10cm_shp, 'gP.m2')
+mean(soilP_0_10_rmse_idw) #1.51 g soilP m2
+soilP_10_30_rmse_idw <- crossval_idw(soil_10_30cm_shp, 'gP.m2')
+mean(soilP_10_30_rmse_idw) #0.83 g P soilP m2
 
 #cross validate nearest neighbors model
-for (k in 1:7) {
-  tst <- soil_0_30cm_shp[kf == k, ]
-  trn <- soil_0_30cm_shp[kf != k, ]
-  gs <- gstat(formula=kgOrgC.m2~1, locations=trn, maxdist = 25, set=list(idp=0))
-  p <- predict(gs, tst)
-  rmse[k] <- RMSE(tst$kgOrgC.m2, p$var1.pred)
+crossval_nn <- function(df_pts, varname, maxdist=25, idp=0) {
+  rmse <- rep(NA, 20)
+  for (k in 1:20) {
+    tst <- df_pts[kf == k, ]
+    trn <- df_pts[kf != k, ]
+    gs <- gstat(formula=as.formula(paste(varname, '~1')), locations=trn, maxdist = maxdist, set=list(idp=idp))
+    p <- predict(gs, tst)
+    rmse[k] <- RMSE(tst[[varname]], p$var1.pred)
+  }
+  rmse
 }
-rmse
-mean(rmse)
-# null <- RMSE(soil_0_30cm_shp$kgOrgC.m2, mean(soil_0_30cm_shp$kgOrgC.m2))
-# null #0.706
+orgC_0_30_rmse_nn <- crossval_nn(soil_0_30cm_shp, 'kgOrgC.m2')
+mean(orgC_0_30_rmse_nn) #0.6152075
+orgC_0_10_rmse_nn <- crossval_nn(soil_0_10cm_shp, 'kgOrgC.m2')
+mean(orgC_0_10_rmse_nn) #0.4063699
+orgC_10_30_rmse_nn <- crossval_nn(soil_10_30cm_shp, 'kgOrgC.m2')
+mean(orgC_10_30_rmse_nn) #0.3396059
 
+clay_0_30_rmse_nn <- crossval_nn(soil_0_30cm_shp, 'clay_wtd')
+mean(clay_0_30_rmse_nn) #2.80241% clay
+clay_0_10_rmse_nn <- crossval_nn(soil_0_10cm_shp, 'CLAY')
+mean(clay_0_10_rmse_nn) #2.94755% clay
+clay_10_30_rmse_nn <- crossval_nn(soil_10_30cm_shp, 'CLAY')
+mean(clay_10_30_rmse_nn) #3.312241% clay
+
+WMPD_0_30_rmse_nn <- crossval_nn(soil_0_30cm_shp, 'WMPD_mm')
+mean(WMPD_0_30_rmse_nn) #0.05174892 mm
+WMPD_0_10_rmse_nn <- crossval_nn(soil_0_10cm_shp, 'WMPD_mm')
+mean(WMPD_0_10_rmse_nn) #0.05679778 mm
+WMPD_10_30_rmse_nn <- crossval_nn(soil_10_30cm_shp, 'WMPD_mm')
+mean(WMPD_10_30_rmse_nn) #0.06007388 mm
+
+IC_0_30_rmse_nn <- crossval_nn(soil_0_30cm_shp, 'kgIC.m2')
+mean(IC_0_30_rmse_nn) #0.6083737 kg IC m2
+IC_0_10_rmse_nn <- crossval_nn(soil_0_10cm_shp, 'kgIC.m2')
+mean(IC_0_10_rmse_nn) #0.3248757 kg IC m2
+IC_10_30_rmse_nn <- crossval_nn(soil_10_30cm_shp, 'kgIC.m2')
+mean(IC_10_30_rmse_nn) #0.4009364 kg IC m2
+
+soilP_0_30_rmse_nn <- crossval_nn(soil_0_30cm_shp, 'gP.m2')
+mean(soilP_0_30_rmse_nn) # 1.91 g soilP m2
+soilP_0_10_rmse_nn <- crossval_nn(soil_0_10cm_shp, 'gP.m2')
+mean(soilP_0_10_rmse_nn) #1.43 g soilP m2
+soilP_10_30_rmse_nn <- crossval_nn(soil_10_30cm_shp, 'gP.m2')
+mean(soilP_10_30_rmse_nn) #0.79 g P soilP m2
 
 #ordinary kriging
 #borrowed code from http://rspatial.org/analysis/rst/4-interpolation.html
-
 orgC_krig <- gstat(formula=kgOrgC.m2~1, locations=soil_0_30cm_shp)
 v <- variogram(orgC_krig, width=14)
 v
@@ -254,23 +394,56 @@ library(dismo)
 kf <- kfold(soil_0_30cm_shp, k=20)
 tapply(kf, kf, length)
 rmse <- rep(NA, 20)
-for (k in 1:20) {
-  tst <- soil_0_30cm_shp[kf == k, ]
-  trn <- soil_0_30cm_shp[kf != k, ]
-  orgC_krig <- gstat(formula=kgOrgC.m2~1, locations=trn)
-  v <- variogram(orgC_krig, width=13)
-  fve <- fit.variogram(v, vgm(psill=0.3, model="Sph", range=50, nugget=0.2))
-  print(fve)
-  plot(variogramLine(fve, 100), type='l', ylim=c(0,0.7), main=paste0(k, '-fold plot'))
-  points(v[,2:3], pch=20, col='red')
-  gs <- gstat(formula=kgOrgC.m2~1, locations=trn, model=fve) #used model created above
-  p <- predict(gs, tst)
-  rmse[k] <- RMSE(tst$kgOrgC.m2, p$var1.pred)
+crossval_ordkrig <- function(df_pts, varname, psill=0.3, model='Sph', range=50, nugget=0.2) {
+  for (k in 1:20) {
+    tst <- df_pts[kf == k, ]
+    trn <- df_pts[kf != k, ]
+    varname_krig <- gstat(formula=as.formula(paste(varname, '~1')), locations=trn)
+    v <- variogram(varname_krig, width=13)
+    fve <- fit.variogram(v, vgm(psill=psill, model=model, range=range, nugget=nugget))
+    print(fve)
+    plot(variogramLine(fve, 150), type='l', ylim=c(0,(psill+nugget)*2), main=paste0(k, '-fold plot'))
+    points(v[,2:3], pch=20, col='red')
+    gs <- gstat(formula=as.formula(paste(varname, '~1')), locations=trn, model=fve) #used model created above
+    p <- predict(gs, tst)
+    rmse[k] <- RMSE(tst[[varname]], p$var1.pred)
+  }
+  rmse
 }
-rmse #0.6218670 0.5652445 1.1382191 0.3935765 0.4213749 0.3757513 1.0042888 0.3682359 0.8020960 0.3945788 0.4760962 0.4714722 0.6128078 0.6939493 0.5178311 0.9636500 0.7536236 0.6848006 0.6717286 0.3760554
-mean(rmse) #0.6153624 with ordinary krigging 20-fold CV test
-sd(soil_0_30cm_shp$kgOrgC.m2) #sd is 0.710 kgC m^-2
-ordkrig_rmse <- rmse
+orgC_0_30_rmse_ordkrig <- crossval_ordkrig(soil_0_30cm_shp, 'kgOrgC.m2', psill=0.3, model='Exp', range=50, nugget=0.2)
+mean(orgC_0_30_rmse_ordkrig) #0.601 exp model is better
+orgC_0_10_rmse_ordkrig <- crossval_ordkrig(soil_0_10cm_shp, 'kgOrgC.m2', psill=0.2, model='Exp', range=25, nugget=0.1)
+mean(orgC_0_10_rmse_ordkrig) #0.388
+orgC_10_30_rmse_ordkrig <- crossval_ordkrig(soil_10_30cm_shp, 'kgOrgC.m2', psill=0.2, model='Exp', range=25, nugget=0.1)
+mean(orgC_10_30_rmse_ordkrig) #0.334
+
+clay_0_30_rmse_ordkrig <- crossval_ordkrig(soil_0_30cm_shp, 'clay_wtd', psill = 20, nugget = 2, model = 'Exp')
+mean(clay_0_30_rmse_ordkrig) #2.78% clay
+clay_0_10_rmse_ordkrig <- crossval_ordkrig(soil_0_10cm_shp, 'CLAY', psill = 20, nugget = 2, model = 'Exp')
+mean(clay_0_10_rmse_ordkrig) #2.84% clay
+clay_10_30_rmse_ordkrig <- crossval_ordkrig(soil_10_30cm_shp, 'CLAY', psill = 20, nugget = 2, model = 'Exp')
+mean(clay_10_30_rmse_ordkrig) #3.35% clay
+
+WMPD_0_30_rmse_ordkrig <- crossval_ordkrig(soil_0_30cm_shp, 'WMPD_mm', psill = 0.01, nugget = 0, model = 'Exp')
+mean(WMPD_0_30_rmse_ordkrig) #0.05303076 mm
+WMPD_0_10_rmse_ordkrig <- crossval_ordkrig(soil_0_10cm_shp, 'WMPD_mm', psill = 0.01, nugget = 0, model = 'Exp')
+mean(WMPD_0_10_rmse_ordkrig) #0.05757858 mm
+WMPD_10_30_rmse_ordkrig <- crossval_ordkrig(soil_10_30cm_shp, 'WMPD_mm', psill = 0.01, nugget = 0, model = 'Exp')
+mean(WMPD_10_30_rmse_ordkrig) #0.06220013 mm
+
+IC_0_30_rmse_ordkrig <- crossval_ordkrig(soil_0_30cm_shp, 'kgIC.m2', psill = 0.5, nugget = 0, model = 'Exp', range=15)
+mean(IC_0_30_rmse_ordkrig) #0.6545536 kg IC m2
+IC_0_10_rmse_ordkrig <- crossval_ordkrig(soil_0_10cm_shp, 'kgIC.m2', psill = 0.5, nugget = 0, model = 'Exp', range=15)
+mean(IC_0_10_rmse_ordkrig) #0.3365619 kg IC m2
+IC_10_30_rmse_ordkrig <- crossval_ordkrig(soil_10_30cm_shp, 'kgIC.m2' , psill = 0.5, nugget = 0, model = 'Exp', range=15)
+mean(IC_10_30_rmse_ordkrig) #0.4257973 kg IC m2
+
+soilP_0_30_rmse_ordkrig <- crossval_ordkrig(soil_0_30cm_shp, 'gP.m2', psill = 7, nugget = 0, model = 'Exp', range=25)
+mean(soilP_0_30_rmse_ordkrig) # 1.96 g soilP m2
+soilP_0_10_rmse_ordkrig <- crossval_ordkrig(soil_0_10cm_shp, 'gP.m2', psill = 7, nugget = 0, model = 'Exp', range=25)
+mean(soilP_0_10_rmse_ordkrig) #1.47 g soilP m2
+soilP_10_30_rmse_ordkrig <- crossval_ordkrig(soil_10_30cm_shp, 'gP.m2', psill = 1, nugget = 0, model = 'Exp', range=25)
+mean(soilP_10_30_rmse_ordkrig) #0.79 g P soilP m2
 
 #regression krigging model 0-30 cm
 library(relaimpo)
