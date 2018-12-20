@@ -38,7 +38,7 @@ names(Mar2017_terrain_3m) <- c('aspect', 'curvature_mean', 'curvature_plan', 'cu
 solrad_raster <- raster(file.path(solradDir, 'solrad_3m_filtered.tif'))
 solrad_raster <- solrad_raster / 1000
 plot(solrad_raster)
-plot(soil_0_30cm_shp, pch=19, add=TRUE)
+plot(soil_0_30cm_shp, pch=1, add=TRUE)
 Mar2017_terrain_3m$annual_kwh.m2 <- solrad_raster
 
 #now calculate distance from forage sampling points in 2017 to soil sampling points in 2018
@@ -491,19 +491,36 @@ vif(orgC_lm)
 orgC_terrain_pred <- predict(Mar2017_terrain_3m, orgC_lm, fun=predict)
 plot(orgC_terrain_pred)
 orgC_terrain_pred <- resample(orgC_terrain_pred, r, method='bilinear')
+plot(orgC_terrain_pred)
 soil_0_30cm_shp$org_lm_residuals <- orgC_lm$residuals
 #check autocorrelation in residuals
 soil_0_30cm_shp$orgC_lm_predictions <- orgC_lm$fitted.values
 summary(lm(kgOrgC.m2 ~ orgC_lm_predictions, data = soil_0_30cm_shp))
 plot(soil_0_30cm_shp$orgC_lm_predictions, soil_0_30cm_shp$kgOrgC.m2)
 orgC_reg_krig <- gstat(formula=org_lm_residuals~1, locations =  soil_0_30cm_shp)
-v <- variogram(orgC_reg_krig, width=21)
-plot(v)
+v <- variogram(orgC_reg_krig) #not specifying distance here
+test <- fit.variogram(v, vgm(c("Exp", "Mat", "Sph", 'Gau', 'Lin', 'Bes', 'Log', 'Ste')), fit.kappa = seq(0.3,30,0.05))
+as.character(test$model)[2]
+test
 
-fve <- fit.variogram(v, vgm(psill=0.3, model="Exp", range=50, nugget = 0.2)) #works for width = 21
-fve <- fit.variogram(v, vgm(psill=2.3, model="Sph", range=2900, nugget = 0.2))
-#finally, convergence!
+library(sp)
+library(automap)
+test <- autofitVariogram(formula=org_lm_residuals~1, input_data = soil_0_30cm_shp, verbose = FALSE)
+test$exp_var
+test$var_model
+plot(test)
+v <- variogram(orgC_reg_krig, boundaries=test$exp_var$dist + 10)
+v
+mean(v$dist[2:length(v$dist)] - v$dist[1:(length(v$dist)-1)])
+show.vgms()
+
+fve <- test
+fve <- fit.variogram(v, vgm(psill=fve$var_model$psill[2], model=as.character(fve$var_model$model)[2], range=fve$var_model$range[2], nugget = fve$var_model$psill[1], kappa = fve$var_model$kappa[2]), fit.kappa = seq(0.3,30,0.05))
 fve
+
+#fve <- fit.variogram(v, vgm(psill=0.3, model="Exp", range=50, nugget = 0.2)) #works for width = 21
+#fve <- fit.variogram(v, vgm(psill=2.3, model="Sph", range=2900, nugget = 0.2))
+#finally, convergence!
 #model      psill    range
 #1   Nug 0.23304615   0.0000
 #2   Sph 0.07379567 168.1028
@@ -516,17 +533,21 @@ orgC_res_regkrig <- predict(regkrig_model, as(r, 'SpatialGrid'))
 spplot(orgC_res_regkrig)
 orgC_res_regkrig <- brick(orgC_res_regkrig)
 plot(orgC_res_regkrig$var1.pred)
-plot(soil_0_30cm_shp$org_lm_residuals, soil_0_30cm_shp$kgOrgC.m2)
+soil_0_30cm_shp$orgC_regkrig_correction <- extract(orgC_res_regkrig$var1.pred, soil_0_30cm_shp) 
+plot(soil_0_30cm_shp$WMPD_mm, soil_0_30cm_shp$orgC_regkrig_correction)
+summary(lm(soil_0_30cm_shp$orgC_regkrig_correction ~ soil_0_30cm_shp$WMPD_mm))
+plot(soil_0_30cm_shp$orgC_lm_predictions, soil_0_30cm_shp$org_lm_residuals)
 plot(orgC_terrain_pred)
 orgC_regkrig_est <- orgC_res_regkrig$var1.pred + orgC_terrain_pred
 plot(orgC_regkrig_est)
 soil_0_30cm_shp$orgC_est_regkrig <- extract(orgC_regkrig_est, soil_0_30cm_shp)
+plot(soil_0_30cm_shp$kgClay.m2, soil_0_30cm_shp$orgC_est_regkrig)
 plot(soil_0_30cm_shp$orgC_est_regkrig, soil_0_30cm_shp$kgOrgC.m2)
-summary(lm(kgOrgC.m2 ~ orgC_est_regkrig, data=soil_0_30cm_shp)) #r^2=0.99
+summary(lm(kgOrgC.m2 ~ orgC_est_regkrig, data=soil_0_30cm_shp)) #r^2=0.5; r^2=0.99 when using other manually selected variogram object that results in more exact interpolation
 all_forage_sp$orgC_est_regkrig <- extract(orgC_regkrig_est, all_forage_sp)
 plot(all_forage_sp$orgC_est_regkrig, all_forage_sp$peak_2017)
 abline(lm(peak_2017 ~ orgC_est_regkrig, data = all_forage_sp), lty=2)
-summary(lm(peak_2017 ~ orgC_est_regkrig, data = all_forage_sp)) #r^2=0.24;p-val=0.004
+summary(lm(peak_2017 ~ orgC_est_regkrig, data = all_forage_sp)) #r^2=0.23;p-val=0.006
 plot(all_forage_sp$orgC_est_regkrig, all_forage_sp$peak_2018)
 abline(lm(peak_2018 ~ orgC_est_regkrig, data = all_forage_sp), lty=2)
 summary(lm(peak_2018 ~ orgC_est_regkrig, data = all_forage_sp)) #r^2=0.17;p-val=0.11
@@ -535,8 +556,10 @@ summary(lm(peak_2018 ~ orgC_est_regkrig, data = all_forage_sp)) #r^2=0.17;p-val=
 set.seed(20161203)
 library(dismo)
 kf <- kfold(soil_0_30cm_shp, k=20)
-tapply(kf, kf, length)
+table(kf)
 rmse <- rep(NA, 20)
+soil_0_30cm_shp$oob.predictions <- NA
+#kappa list example from autofitVariogram function: c(0.05, seq(0.2, 2, 0.1), 5, 10)
 #k <- 1
 for (k in 1:20) {
   tst <- soil_0_30cm_shp[kf == k, ]
@@ -547,11 +570,17 @@ for (k in 1:20) {
   #orgC_tst_pred <- extract(orgC_terrain_pred, tst)
   #print(summary(varname_lm))
   orgC_tst_pred <- predict.lm(orgC_lm, tst)
+  soil_0_30cm_shp$oob.predictions[kf == k] <- orgC_tst_pred
   orgC_reg_krig <- gstat(formula=residuals ~ 1, locations = trn)
-  v <- variogram(orgC_reg_krig, width=22)
-  #fve <- fit.variogram(v, vgm(psill=0.3, model="Exp", range=50, nugget = 0.2))
-  fve <- fit.variogram(v, vgm(psill=0.3, model="Sph", range=50, nugget = 0.2))
-  regkrig_model <- gstat(formula=orgC_lm$residuals ~ 1, locations = trn, model=fve)
+  v <- variogram(orgC_reg_krig)
+  test <- autofitVariogram(formula=residuals~1, input_data = trn, verbose = TRUE)
+  v <- variogram(orgC_reg_krig, boundaries=test$exp_var$dist + 10)
+  #fve <- fit.variogram(v, vgm(c("Exp", "Mat", "Sph", 'Gau', 'Lin', 'Bes', 'Log', 'Ste')), fit.kappa = seq(0.3,30,0.05))
+  fve <- autofitVariogram(formula=org_lm_residuals~1, input_data = soil_0_30cm_shp, verbose = TRUE, kappa=c(0.05, seq(0.1,5,0.1), seq(5, 250, 5)))
+  fve <- fit.variogram(v, vgm(psill=fve$var_model$psill[2], model=as.character(fve$var_model$model)[2], range=fve$var_model$range[2], nugget = fve$var_model$psill[1], kappa = fve$var_model$kappa[2]))
+  #fve <- fit.variogram(v, vgm(psill=0.3, model="Exp", range=50, nugget = 0.2, kappa = 10))
+  #fve <- fit.variogram(v, vgm(psill=0.3, model="Sph", range=50, nugget = 0.2))
+  regkrig_model <- gstat(formula=residuals ~ 1, locations = trn, model=fve)
   p_res_correction <- predict(regkrig_model, tst)
   p <- p_res_correction$var1.pred + orgC_tst_pred
   rmse[k] <- RMSE(tst$kgOrgC.m2, p)
@@ -559,11 +588,15 @@ for (k in 1:20) {
   plot(variogramLine(fve, 200), type='l', ylim=c(0,0.7), main=paste0(k, '-fold plot'))
   points(v[,2:3], pch=20, col='red')
 }
+plot(soil_0_30cm_shp$oob.predictions, soil_0_30cm_shp$kgOrgC.m2)
+summary(lm(kgOrgC.m2 ~ oob.predictions, data = soil_0_30cm_shp)) #OOB prediction is 0.36
 rmse #0.4939221 0.5600666 1.0633800 0.6527512 0.4721887 0.3774705 0.7145091 0.4467885 0.7634694 0.4930032 0.4282195 0.4026534 0.3921021 0.6156166 0.4385753 0.8660794 0.7585025 0.5583349 0.6681401 0.2705451
-mean(rmse) #0.5098548, best so far except for multiple linear regression
-
+mean(rmse) #0.5098548 using v <- variogram(orgC_reg_krig, width = 22) and fve <- fit.variogram(v, vgm(psill=0.3, model="Exp", range=50, nugget = 0.2)), best so far except for multiple linear regression
+#0.525458 using autofit function
+#0.5266747 using fit.variogram function that considers multiple models
 #turn this into function
-crossval_regkrig <- function(df_pts, varname, psill=0.1, model='Sph', range=150, nugget=0.2, width=15) {
+#0.523046 using 
+crossval_regkrig <- function(df_pts, varname) {
   for (k in 1:20) {
     tst <- df_pts[kf == k, ]
     trn <- df_pts[kf != k, ]
@@ -573,9 +606,12 @@ crossval_regkrig <- function(df_pts, varname, psill=0.1, model='Sph', range=150,
     # tst_pred <- extract(terrain_pred, tst)
     tst_pred <- predict.lm(orgC_lm, tst)
     reg_krig <- gstat(formula=residuals ~ 1, locations = trn)
-    v <- variogram(reg_krig, width=15)
-    fve <- fit.variogram(v, vgm(psill=0.1, model="Sph", range=150, nugget = 0.2))
-    regkrig_model <- gstat(formula=varname_lm$residuals ~ 1, locations = trn, model=fve)
+    test <- autofitVariogram(formula=residuals~1, input_data = trn, verbose = TRUE)
+    v <- variogram(reg_krig, boundaries=test$exp_var$dist + 10)
+    fve <- autofitVariogram(formula=residuals~1, input_data = trn, verbose = TRUE)
+    fve <- fit.variogram(v, vgm(psill=fve$var_model$psill[2], model='Ste', range=fve$var_model$range[2], nugget = fve$var_model$psill[1], kappa = fve$var_model$kappa[2]))
+    #fve <- fit.variogram(v, vgm(psill=0.1, model="Sph", range=150, nugget = 0.2))
+    regkrig_model <- gstat(formula=residuals ~ 1, locations = trn, model=fve)
     p_res_correction <- predict(regkrig_model, tst)
     p <- p_res_correction$var1.pred + tst_pred
     rmse[k] <- RMSE(tst[[varname]], p)
@@ -583,9 +619,10 @@ crossval_regkrig <- function(df_pts, varname, psill=0.1, model='Sph', range=150,
     plot(variogramLine(fve, 200), type='l', ylim=c(0,0.7), main=paste0(k, '-fold plot'))
     points(v[,2:3], pch=20, col='red')
   }
+  rmse
 }
-
-
+orgC_0_30_rmse_regkrig <- crossval_regkrig(soil_0_30cm_shp, 'kgOrgC.m2')
+mean(orgC_0_30_rmse_regkrig) #0.5117921
 #regression krigging model 0-10 cm
 summary(lm(kgOrgC.m2 ~ curvature_mean + elevation + slope + coords.x1 + coords.x2, data=soil_0_10cm_shp))
 orgC_lm <- lm(kgOrgC.m2 ~ curvature_mean + elevation + slope + annual_kwh.m2, data=soil_0_10cm_shp)
