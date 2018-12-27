@@ -11,6 +11,10 @@ spatialforageDir <- 'C:/Users/smdevine/Desktop/rangeland project/clip_plots/resu
 forageDir <- 'C:/Users/smdevine/Desktop/rangeland project/clip_plots'
 #0_30 dataset
 modelResults <- 'C:/Users/smdevine/Desktop/rangeland project/SoilCarbonProject/model_results'
+FiguresDir <- 'C:/Users/smdevine/Desktop/rangeland project/SoilCarbonProject/Figures'
+library(extrafont)
+library(extrafontdb)
+loadfonts()
 list.files(file.path(soilCresults, 'shapefiles'))
 soil_0_30cm_df <- read.csv(file.path(soilCresults, 'shapefiles', 'soil_0_30cm_df.csv'), stringsAsFactors = FALSE)
 library(raster)
@@ -18,6 +22,7 @@ library(gstat)
 library(spdep)
 library(automap)
 soil_0_30cm_shp <- SpatialPointsDataFrame(soil_0_30cm_df[,c('coords.x1', 'coords.x2')], data=soil_0_30cm_df, proj4string = CRS('+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0'))
+soil_0_30cm_shp$energy_colors <- ifelse(soil_0_30cm_shp$annual_kwh.m2 <= 1200, 'blue', ifelse(soil_0_30cm_shp$annual_kwh.m2 > 1200 & soil_0_30cm_shp$annual_kwh.m2 < 1410, 'orange2', 'red3'))
 plot(soil_0_30cm_shp, cex=soil_0_30cm_shp$kgOrgC.m2/2, pch=20)
 sd(soil_0_30cm_shp$kgOrgC.m2)/mean(soil_0_30cm_shp$kgOrgC.m2) #CV is 19.5%
 
@@ -86,8 +91,49 @@ all_forage_sp <- shapefile(file.path(spatialforageDir, 'all_pts_2017_2018.shp'))
 #also http://rspatial.org/analysis/rst/4-interpolation.html is more refined source of information
 
 #first look at associations
-lapply(as.data.frame(soil_0_30cm_shp[,c('elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'clay_wtd')]), function(x) plot(x, soil_0_30cm_shp$kgOrgC.m2))
-summary(lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + clay_wtd + silt_wtd, data =  soil_0_30cm_shp))
+lapply(as.data.frame(soil_0_30cm_shp[,c('elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'clay_wtd', 'WMPD_mm')]), function(x) plot(x, soil_0_30cm_shp$kgOrgC.m2))
+rank_test <- function(x, df, y, mtd) {
+  test <- cor.test(x, df[[y]], method = mtd)
+  result <- data.frame(col.1=test$p.value, col.2=test$estimate)
+  colnames(result) <- c(paste0(y, '.p.val.', mtd), paste0(y, if(mtd=='pearson') {'.tau.'} else {'.rho.'}, mtd))
+  result
+}
+do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'clay_wtd', 'WMPD_mm')]), rank_test, df=soil_0_30cm_shp, y='kgOrgC.m2', mtd='pearson'))
+summary(lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + clay_wtd, data =  soil_0_30cm_shp))
+tiff(file = file.path(FiguresDir, 'clay_vs_orgC_0_30cm.tif', sep = ''), family = 'Times New Roman', width = 3.5, height = 3.5, pointsize = 11, units = 'in', res=150)
+par(mar=c(4.5, 4.5, 1, 1))
+plot(soil_0_30cm_shp$clay_wtd, soil_0_30cm_shp$kgOrgC.m2, xlab=paste('0-30 cm clay (%)'), ylab=expression(paste('soil organic carbon (kg', ' ', m^-2, ')')), pch=21, cex.axis=1, cex.lab=1) #ylim = c(300, 1600), xlim=c(1400, 4700), col=soil_0_30cm_shp$energy_colors,
+abline(lm(kgOrgC.m2 ~ clay_wtd, data = soil_0_30cm_shp), lty=2)
+dev.off()
+summary(lm(kgOrgC.m2 ~ clay_wtd, data = soil_0_30cm_shp))
+
+tiff(file = file.path(FiguresDir, 'elevation_vs_orgC_0_30cm.tif', sep = ''), family = 'Times New Roman', width = 3.5, height = 3.5, pointsize = 11, units = 'in', res=150)
+par(mar=c(4.5, 4.5, 1, 1))
+plot(soil_0_30cm_shp$elevation, soil_0_30cm_shp$kgOrgC.m2, xlab=paste('elevation (m)'), ylab=expression(paste('soil organic carbon (kg', ' ', m^-2, ')')), pch=21, cex.axis=1, cex.lab=1) #ylim = c(300, 1600), xlim=c(1400, 4700), col=soil_0_30cm_shp$energy_colors
+abline(lm(kgOrgC.m2 ~ elevation, data = soil_0_30cm_shp), lty=2)
+dev.off()
+summary(lm(kgOrgC.m2 ~ elevation, data = soil_0_30cm_shp))
+
+tiff(file = file.path(FiguresDir, 'mean_curv_vs_orgC_0_30cm.tif', sep = ''), family = 'Times New Roman', width = 3.5, height = 3.5, pointsize = 11, units = 'in', res=150)
+par(mar=c(4.5, 4.5, 1, 1))
+plot(soil_0_30cm_shp$curvature_mean, soil_0_30cm_shp$kgOrgC.m2, xlab=paste('mean curvature'), ylab=expression(paste('soil organic carbon (kg', ' ', m^-2, ')')), pch=21, cex.axis=1, cex.lab=1) #col=soil_0_30cm_shp$energy_colors, ylim = c(300, 1600), xlim=c(1400, 4700)
+abline(lm(kgOrgC.m2 ~ curvature_mean, data = soil_0_30cm_shp), lty=2)
+dev.off()
+summary(lm(kgOrgC.m2 ~ curvature_mean, data = soil_0_30cm_shp))
+
+tiff(file = file.path(FiguresDir, 'solrad_vs_orgC_0_30cm.tif', sep = ''), family = 'Times New Roman', width = 3.5, height = 3.5, pointsize = 11, units = 'in', res=150)
+par(mar=c(4.5, 4.5, 1, 1))
+plot(soil_0_30cm_shp$annual_kwh.m2, soil_0_30cm_shp$kgOrgC.m2, xlab=expression(paste('annual clear sky radiation (kWh', ' ', yr^-1, ')')), ylab=expression(paste('soil organic carbon (kg', ' ', m^-2, ')')), pch=21, cex.axis=1, cex.lab=1) #col=soil_0_30cm_shp$energy_colors, ylim = c(300, 1600), xlim=c(1400, 4700)
+abline(lm(kgOrgC.m2 ~ annual_kwh.m2, data = soil_0_30cm_shp), lty=2)
+dev.off()
+summary(lm(kgOrgC.m2 ~ curvature_mean, data = soil_0_30cm_shp))
+
+tiff(file = file.path(FiguresDir, 'elevation_vs_clay_0_30cm.tif', sep = ''), family = 'Times New Roman', width = 3.5, height = 3.5, pointsize = 11, units = 'in', res=150)
+par(mar=c(4.5, 4.5, 1, 1))
+plot(soil_0_30cm_shp$elevation, soil_0_30cm_shp$kgClay.m2, xlab=paste('elevation (m)'), ylab=expression(paste('clay (kg', ' ', m^-2, ')')), pch=21, cex.axis=1, cex.lab=1) #col=soil_0_30cm_shp$energy_colors, ylim = c(300, 1600), xlim=c(1400, 4700)
+abline(lm(kgClay.m2 ~ elevation, data = soil_0_30cm_shp), lty=2)
+dev.off()
+
 
 #first calculate NULL cross-validated model
 RMSE <- function(observed, predicted) {
