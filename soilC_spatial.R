@@ -164,7 +164,6 @@ text(x=480, y=50,labels=paste('p-val < 0.001'))
 dev.off()
 summary(lm(kgClay.m2 ~ elevation, data = soil_0_30cm_shp))
 
-
 tiff(file = file.path(FiguresDir, 'WMPDmm_vs_orgC_0_30cm.tif', sep = ''), family = 'Times New Roman', width = 3.5, height = 3.5, pointsize = 11, units = 'in', res=150)
 par(mar=c(4.5, 4.5, 1, 1))
 plot(soil_0_30cm_shp$WMPD_mm, soil_0_30cm_shp$kgOrgC.m2, xlab='', ylab=expression(paste('soil organic carbon (kg', ' ', m^-2, ')')), pch=21, cex.axis=1, cex.lab=1) #col=soil_0_30cm_shp$energy_colors, ylim = c(300, 1600), xlim=c(1400, 4700)
@@ -207,9 +206,9 @@ null #0.706
 set.seed(20161203)
 library(dismo)
 kf <- kfold(soil_0_30cm_shp, k=20)
-k <- 2
-df_pts <- soil_0_30cm_shp
-varname <- 'kgOrgC.m2'
+#k <- 2
+#df_pts <- soil_0_30cm_shp
+#varname <- 'kgOrgC.m2'
 crossval_null <- function(df_pts, varname) {
   rmse <- rep(NA, 20)
   predictions <- rep(NA, 105)
@@ -257,18 +256,41 @@ mean(soilP_0_10_rmse_null) #2.20 g soilP m2
 soilP_10_30_rmse_null <- crossval_null(soil_10_30cm_shp, 'gP.m2')
 mean(soilP_10_30_rmse_null) #1.12 g P soilP m2
 
-#multiple linear regression CV test
+#multiple linear regression CV test and final map
 summary(lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + elevation, data =  soil_0_30cm_shp))
 summary(lm(kgOrgC.m2 ~ curvature_mean + annual_kwh.m2 + slope + clay_wtd, data =  soil_0_30cm_shp))
 summary(lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + elevation, data =  soil_0_10cm_shp))
 summary(lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + elevation, data =  soil_10_30cm_shp))
-crossval_lm <- function(df_pts, varname) {
+
+#map organic carbon 0-30 cm
+lm_terrain4_0_30cm <- lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + elevation, data =  soil_0_30cm_shp)
+kgOrgC.m2_terrain4_0_30cm <- predict(Mar2017_terrain_3m, lm_terrain4_0_30cm, filename=file.path(FiguresDir, 'kgOrgC.m2_terrain4_0_30cm.tif'))
+plot(kgOrgC.m2_terrain4_0_30cm)
+summary(kgOrgC.m2_terrain4_0_30cm)
+quantile(kgOrgC.m2_terrain4_0_30cm, probs=c(0.25, 0.75)) 
+#25%  75% 
+#3.26 4.03
+quantile(kgOrgC.m2_terrain4_0_30cm, probs=c(0.33, 0.66))
+quantile(soil_0_30cm_shp$kgOrgC.m2, probs=c(0.33, 0.66))
+
+#map clay 0-30 cm (as WMPD)
+clay_krig <- gstat(formula=clay_wtd ~ 1, locations=soil_0_30cm_shp)
+v <- variogram(clay_krig)
+fve <- fit.variogram(v, vgm(c("Exp", "Mat", "Sph", 'Gau', 'Ste')), fit.kappa = c(0.05, seq(0.1,5,0.1), seq(5, 250, 5)))
+plot(variogramLine(fve, 150), type='l', main=paste0(k, '-fold plot'))
+points(v[,2:3], pch=20, col='red')
+gs <- gstat(formula=clay_wtd ~ 1, locations=soil_0_30cm_shp, model=fve) #used model created above
+claywtd_0_30cm_ordkrig <- predict(gs, as(r, 'SpatialGrid'))
+claywtd_0_30cm_ordkrig <- brick(claywtd_0_30cm_ordkrig)
+writeRaster(claywtd_0_30cm_ordkrig$var1.pred, filename = file.path(FiguresDir, 'claywtd_0_30cm_ordkrig.tif'))
+plot(claywtd_0_30cm_ordkrig)
+crossval_lm <- function(df_pts, varname, model='~ curvature_mean + slope + annual_kwh.m2 + elevation') {
   rmse <- rep(NA, 20)
   predictions <- rep(NA, 105)
   for (k in 1:20) {
     tst <- df_pts[kf == k, ]
     trn <- df_pts[kf != k, ]
-    varname_lm <- lm(as.formula(paste(varname, '~ curvature_mean + slope + annual_kwh.m2 + elevation')), data = trn)
+    varname_lm <- lm(as.formula(paste(varname, model)), data = trn)
     #print(summary(varname_lm))
     varname_tst_pred <- predict.lm(varname_lm, tst)
     rmse[k] <- RMSE(tst[[varname]], varname_tst_pred)
@@ -277,8 +299,8 @@ crossval_lm <- function(df_pts, varname) {
   print(summary(lm(df_pts[[varname]] ~ predictions)))
   list(rmse.kfold=rmse, oob.predictions=predictions)
 }
-orgC_0_30_rmse_lm <- crossval_lm(soil_0_30cm_shp, 'kgOrgC.m2')
-mean(orgC_0_30_rmse_lm$rmse.kfold) #0.533 kg orgC m2; r^2=0.36 oob
+orgC_0_30_rmse_lm <- crossval_lm(soil_0_30cm_shp, 'kgOrgC.m2', model = '~ curvature_mean + elevation + annual_kwh.m2 + slope')
+mean(orgC_0_30_rmse_lm$rmse.kfold) #0.533 kg orgC m2 full model; r^2=0.36 oob; 0.592 with only curv & elev; 0.588 with curv, elev, & slope
 orgC_0_10_rmse_lm <- crossval_lm(soil_0_10cm_shp, 'kgOrgC.m2')
 mean(orgC_0_10_rmse_lm$rmse.kfold) #0.363 kg orgC m2; r^2=0.14 oob
 orgC_10_30_rmse_lm <- crossval_lm(soil_10_30cm_shp, 'kgOrgC.m2')
@@ -915,6 +937,8 @@ write.csv(soilP_0_10_model_comparison_OOBs, file.path(modelResults, 'soilP_0_10c
 
 soilP_10_30_model_comparison_OOBs <- data.frame(null=soilP_10_30_rmse_null$oob.predictions, idw=soilP_10_30_rmse_idw$oob.predictions, nn=soilP_10_30_rmse_nn$oob.predictions, ordkrig=soilP_10_30_rmse_ordkrig$oob.predictions, regkrig=soilP_10_30_rmse_regkrig$oob.predictions, lm_4terrain=soilP_10_30_rmse_lm$oob.predictions, RF_4terrain=soilP_10_30_rmse_RF$oob.predictions)
 write.csv(soilP_10_30_model_comparison_OOBs, file.path(modelResults, 'soilP_10_30cm_model_comps_OOBs.csv'), row.names=TRUE)
+
+#clay map
 
 #regression krigging function development for maps
 varname <- 'clay_wtd'
