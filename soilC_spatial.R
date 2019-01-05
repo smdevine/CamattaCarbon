@@ -17,9 +17,11 @@ forageDir <- 'C:/Users/smdevine/Desktop/rangeland project/clip_plots'
 #0_30 dataset
 modelResults <- 'C:/Users/smdevine/Desktop/rangeland project/SoilCarbonProject/model_results'
 FiguresDir <- 'C:/Users/smdevine/Desktop/rangeland project/SoilCarbonProject/Figures'
+ResultsDir <- 'C:/Users/smdevine/Desktop/rangeland project/results'
 library(extrafont)
 library(extrafontdb)
 loadfonts()
+forage_terrain_energy <- read.csv(file.path(ResultsDir, 'tables', 'forage_terrain_energy_3m_final.csv'), stringsAsFactors = FALSE)
 list.files(file.path(soilCresults, 'shapefiles'))
 soil_0_30cm_df <- read.csv(file.path(soilCresults, 'shapefiles', 'soil_0_30cm_df.csv'), stringsAsFactors = FALSE)
 library(raster)
@@ -40,6 +42,12 @@ plot(soil_0_10cm_shp, cex=soil_0_10cm_shp$kgOrgC.m2/1.5, pch=20)
 soil_10_30cm_df <- read.csv(file.path(soilCresults, 'shapefiles', 'soil_10_30cm_df.csv'), stringsAsFactors = FALSE)
 soil_10_30cm_shp <- SpatialPointsDataFrame(soil_10_30cm_df[,c('coords.x1', 'coords.x2')], data=soil_10_30cm_df, proj4string = CRS('+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0'))
 plot(soil_10_30cm_shp, cex=soil_10_30cm_shp$kgOrgC.m2/1.5, pch=20)
+
+#check weighted average 0-30 cm %org C
+sum(soil_0_10cm_shp$point_no - soil_10_30cm_shp$point_no) #check again that location order is the same in each dataset
+orgC_0_30_percent <- soil_0_10cm_shp$orgC.percent * 1/3 + soil_10_30cm_shp$orgC.percent * 2/3
+summary(orgC_0_30_percent)
+hist(orgC_0_30_percent) #mean is 0.94%
 
 #create grid for spatial predictions
 r <- raster(xmn=(xmin(soil_0_30cm_shp)-10), xmx=(xmax(soil_0_30cm_shp)+10), ymn=(ymin(soil_0_30cm_shp) - 10), ymx=(ymax(soil_0_30cm_shp) + 10), resolution=3, crs=crs(soil_0_30cm_shp))
@@ -77,7 +85,11 @@ plot(Mar2017_terrain_3m$elevation)
 # plot(all_forage_sp, cex=all_forage_sp$peak_2017/2000, col='red', pch=2, add=TRUE)
 # shapefile(all_forage_sp, file.path(spatialforageDir, 'all_pts_2017_2018.shp'))
 all_forage_sp <- shapefile(file.path(spatialforageDir, 'all_pts_2017_2018.shp'))
-
+all_forage_sp$Mar2017growth <- all_forage_sp$clp031417 - all_forage_sp$clp021517
+all_forage_sp$Apr2017growth <- all_forage_sp$clp041017 - all_forage_sp$clp031417
+all_forage_sp$May2017growth <- all_forage_sp$clp050117 - all_forage_sp$clp041017
+all_forage_sp$Mar2018growth <- all_forage_sp$clp032218 - all_forage_sp$clp021518
+all_forage_sp$Apr2018growth <- all_forage_sp$clp041518 - all_forage_sp$clp032218
 
 # distance_matrix <- as.data.frame(pointDistance(coordinates(all_forage_sp)[,1:2], coordinates(soil_0_30cm_shp)[,1:2], lonlat = FALSE))
 # colnames(distance_matrix) <- paste('pt_', soil_0_30cm_shp$point_no)
@@ -264,26 +276,90 @@ summary(lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + elevation, data 
 
 #map organic carbon 0-30 cm
 lm_terrain4_0_30cm <- lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + elevation, data =  soil_0_30cm_shp)
-kgOrgC.m2_terrain4_0_30cm <- predict(Mar2017_terrain_3m, lm_terrain4_0_30cm, filename=file.path(FiguresDir, 'kgOrgC.m2_terrain4_0_30cm.tif'))
+kgOrgC.m2_terrain4_0_30cm <- predict(Mar2017_terrain_3m, lm_terrain4_0_30cm)#, filename=file.path(FiguresDir, 'kgOrgC.m2_terrain4_0_30cm.tif'))
 plot(kgOrgC.m2_terrain4_0_30cm)
-summary(kgOrgC.m2_terrain4_0_30cm)
+soil_0_30cm_shp$kgOrgC.m2_lm.terrain4 <- extract(kgOrgC.m2_terrain4_0_30cm, soil_0_30cm_shp)
+all_forage_sp$kgOrgC.m2_lm.terrain4 <- extract(kgOrgC.m2_terrain4_0_30cm, all_forage_sp)
+summary(lm(peak_2017 ~ kgOrgC.m2_lm.terrain4, data = all_forage_sp))
+summary(lm(peak_2018 ~ kgOrgC.m2_lm.terrain4, data = all_forage_sp))
+summary(lm(Mar2017growth ~ kgOrgC.m2_lm.terrain4, data = all_forage_sp))
+summary(lm(Apr2017growth ~ kgOrgC.m2_lm.terrain4, data = all_forage_sp))
+summary(lm(May2017growth ~ kgOrgC.m2_lm.terrain4, data = all_forage_sp))
+summary(lm(Mar2018growth ~ kgOrgC.m2_lm.terrain4, data = all_forage_sp))
+summary(lm(Apr2018growth ~ kgOrgC.m2_lm.terrain4, data = all_forage_sp))
+
+tiff(file = file.path(FiguresDir, 'peak2017_vs_orgC_0_30cm_lmterrain4.tif', sep = ''), family = 'Times New Roman', width = 3.5, height = 3.5, pointsize = 11, units = 'in', res=150)
+par(mar=c(4.5, 4.5, 1, 1))
+plot(all_forage_sp$kgOrgC.m2_lm.terrain4, all_forage_sp$peak_2017, xlab=expression(paste('estimated soil organic carbon (kg ', ~m^-2, ')')), ylab=expression(paste('peak forage 2017 (kg ', ~ha^-1, ')')))
+abline(lm(peak_2017 ~ kgOrgC.m2_lm.terrain4, data = all_forage_sp), lty=2)
+text(4.5, 2000, label=expression(paste(r^2, '= 0.16')))
+text(4.5, 1600, label='p-val = 0.02')
+dev.off()
+summary(lm(peak_2018 ~ kgOrgC.m2_lm.terrain4, data = all_forage_sp))
+tiff(file = file.path(FiguresDir, 'peak2018_vs_orgC_0_30cm_lmterrain4.tif', sep = ''), family = 'Times New Roman', width = 3.5, height = 3.5, pointsize = 11, units = 'in', res=150)
+par(mar=c(4.5, 4.5, 1, 1))
+plot(all_forage_sp$kgOrgC.m2_lm.terrain4, all_forage_sp$peak_2018, xlab=expression(paste('estimated soil organic carbon (kg ', ~m^-2, ')')), ylab=expression(paste('peak forage 2018 (kg ', ~ha^-1, ')')))
+abline(lm(peak_2018 ~ kgOrgC.m2_lm.terrain4, data = all_forage_sp), lty=2)
+text(4.5, 700, label=expression(paste(r^2, '= 0.11')))
+text(4.5, 600, label='p-val = 0.22')
+dev.off()
+
+summary(lm(forage_terrain_energy$peak2017 ~ predict(lm_terrain4_0_30cm, forage_terrain_energy)))
+
+hist(soil_0_30cm_shp$kgOrgC.m2)
+hist(soil_0_30cm_shp$kgOrgC.m2_lm.terrain4)
+hist(soil_0_30cm_shp$kgOrgC.m2_lm.terrain3clay)
 quantile(kgOrgC.m2_terrain4_0_30cm, probs=c(0.25, 0.75)) 
 #25%  75% 
 #3.26 4.03
 quantile(kgOrgC.m2_terrain4_0_30cm, probs=c(0.33, 0.66))
 quantile(soil_0_30cm_shp$kgOrgC.m2, probs=c(0.33, 0.66))
 
+#map organic carbon 0-10 cm
+lm_terrain4_0_10cm <- lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + elevation, data =  soil_0_10cm_shp)
+kgOrgC.m2_terrain4_0_10cm <- predict(Mar2017_terrain_3m, lm_terrain4_0_10cm)
+plot(kgOrgC.m2_terrain4_0_10cm)
+writeRaster(kgOrgC.m2_terrain4_0_10cm, filename = file.path(FiguresDir, 'kgOrgC_lm.terrain4_0.10cm.tif'))
+all_forage_sp$kgOrgC.m2_0_10_lm.terrain4 <- extract(kgOrgC.m2_terrain4_0_10cm, all_forage_sp)
+summary(lm(all_forage_sp$peak_2017 ~ all_forage_sp$kgOrgC.m2_0_10_lm.terrain4))
+
+#map organic carbon 10-30 cm
+lm_terrain4_10_30cm <- lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + elevation, data =  soil_10_30cm_shp)
+kgOrgC.m2_terrain4_10_30cm <- predict(Mar2017_terrain_3m, lm_terrain4_10_30cm)
+plot(kgOrgC.m2_terrain4_10_30cm)
+writeRaster(kgOrgC.m2_terrain4_10_30cm, filename = file.path(FiguresDir, 'kgOrgC_lm.terrain4_10.30cm.tif'))
+all_forage_sp$kgOrgC.m2_10_30_lm.terrain4 <- extract(kgOrgC.m2_terrain4_10_30cm, all_forage_sp)
+summary(lm(all_forage_sp$peak_2017 ~ all_forage_sp$kgOrgC.m2_10_30_lm.terrain4))
+
 #map clay 0-30 cm (as WMPD)
 clay_krig <- gstat(formula=clay_wtd ~ 1, locations=soil_0_30cm_shp)
 v <- variogram(clay_krig)
 fve <- fit.variogram(v, vgm(c("Exp", "Mat", "Sph", 'Gau', 'Ste')), fit.kappa = c(0.05, seq(0.1,5,0.1), seq(5, 250, 5)))
-plot(variogramLine(fve, 150), type='l', main=paste0(k, '-fold plot'))
+plot(variogramLine(fve, 150), type='l', main='% clay semivariance')
 points(v[,2:3], pch=20, col='red')
 gs <- gstat(formula=clay_wtd ~ 1, locations=soil_0_30cm_shp, model=fve) #used model created above
 claywtd_0_30cm_ordkrig <- predict(gs, as(r, 'SpatialGrid'))
+test <- predict(r, gs)
 claywtd_0_30cm_ordkrig <- brick(claywtd_0_30cm_ordkrig)
 writeRaster(claywtd_0_30cm_ordkrig$var1.pred, filename = file.path(FiguresDir, 'claywtd_0_30cm_ordkrig.tif'))
-plot(claywtd_0_30cm_ordkrig)
+plot(claywtd_0_30cm_ordkrig$var1.pred)
+soil_0_30cm_shp$clay_wtd_ordkrig <- predict(gs, soil_0_30cm_shp)$var1.pred
+plot(soil_0_30cm_shp$clay_wtd_ordkrig, soil_0_30cm_shp$clay_wtd)
+Mar2017_terrain_3m_cropped <- crop(Mar2017_terrain_3m, claywtd_0_30cm_ordkrig)
+claywtd_0_30cm_ordkrig <- crop(claywtd_0_30cm_ordkrig, Mar2017_terrain_3m_cropped)
+Mar2017_terrain_3m_cropped$clay_wtd <-  resample(claywtd_0_30cm_ordkrig$var1.pred, Mar2017_terrain_3m_cropped)
+plot(Mar2017_terrain_3m_cropped$clay_wtd_ordkrig)
+lm_terrain3_clay_0_30cm <- lm(kgOrgC.m2 ~ curvature_mean + annual_kwh.m2 + slope + clay_wtd, data =  soil_0_30cm_shp)
+Mar2017_terrain_3m_cropped$kgOrgC.m2_lmterrain3clay <- predict(Mar2017_terrain_3m_cropped, lm_terrain3_clay_0_30cm)
+plot(Mar2017_terrain_3m_cropped$kgOrgC.m2_lmterrain3clay)
+all_forage_sp$kgOrgC.m2_lmterrain3clay <- extract(Mar2017_terrain_3m_cropped$kgOrgC.m2_lmterrain3clay, all_forage_sp)
+soil_0_30cm_shp$kgOrgC.m2_lm.terrain3clay <- extract(Mar2017_terrain_3m_cropped$kgOrgC.m2_lmterrain3clay, soil_0_30cm_shp)
+plot(all_forage_sp$kgOrgC.m2_lmterrain3clay, all_forage_sp$peak_2017)
+summary(lm(peak_2017 ~ kgOrgC.m2_lmterrain3clay, data = all_forage_sp))
+summary(lm(peak_2018 ~ kgOrgC.m2_lmterrain3clay, data = all_forage_sp))
+writeRaster(Mar2017_terrain_3m_cropped$kgOrgC.m2_lmterrain3clay, filename = file.path(FiguresDir, 'kgOrgC_lm.terrain3clay_0.30cm.tif'))
+summary(lm(soil_0_30cm_shp$kgOrgC.m2 ~ soil_0_30cm_shp$kgOrgC.m2_lm.terrain3clay))
+
 crossval_lm <- function(df_pts, varname, model='~ curvature_mean + slope + annual_kwh.m2 + elevation') {
   rmse <- rep(NA, 20)
   predictions <- rep(NA, 105)
@@ -301,10 +377,14 @@ crossval_lm <- function(df_pts, varname, model='~ curvature_mean + slope + annua
 }
 orgC_0_30_rmse_lm <- crossval_lm(soil_0_30cm_shp, 'kgOrgC.m2', model = '~ curvature_mean + elevation + annual_kwh.m2 + slope')
 mean(orgC_0_30_rmse_lm$rmse.kfold) #0.533 kg orgC m2 full model; r^2=0.36 oob; 0.592 with only curv & elev; 0.588 with curv, elev, & slope
+test <- crossval_lm(soil_0_30cm_shp, 'kgOrgC.m2', model = '~ curvature_mean + annual_kwh.m2 + slope') #r^2=0.3
+plot(orgC_0_30_rmse_lm$oob.predictions, soil_0_30cm_shp$kgOrgC.m2)
 orgC_0_10_rmse_lm <- crossval_lm(soil_0_10cm_shp, 'kgOrgC.m2')
 mean(orgC_0_10_rmse_lm$rmse.kfold) #0.363 kg orgC m2; r^2=0.14 oob
+plot(orgC_0_10_rmse_lm$oob.predictions, soil_0_10cm_shp$kgOrgC.m2)
 orgC_10_30_rmse_lm <- crossval_lm(soil_10_30cm_shp, 'kgOrgC.m2')
 mean(orgC_10_30_rmse_lm$rmse.kfold) #0.291 kg orgC m2; r^2=0.45 oob
+plot(orgC_10_30_rmse_lm$oob.predictions, soil_10_30cm_shp$kgOrgC.m2)
 
 clay_0_30_rmse_lm <- crossval_lm(soil_0_30cm_shp, 'clay_wtd')
 mean(clay_0_30_rmse_lm$rmse.kfold) #4.0% clay; r^2=0.24
@@ -634,12 +714,12 @@ mean(IC_0_10_rmse_ordkrig$rmse.kfold) #0.3295604 kg IC m2; r2=0.16
 IC_10_30_rmse_ordkrig <- crossval_ordkrig(soil_10_30cm_shp, 'kgIC.m2')
 mean(IC_10_30_rmse_ordkrig$rmse.kfold) #0.4256804 kg IC m2; r2=0.07
 
-soilP_0_30_rmse_ordkrig <- crossval_ordkrig(soil_0_30cm_shp, 'gP.m2', psill = 7, nugget = 0, model = 'Exp', range=25)
-mean(soilP_0_30_rmse_ordkrig$rmse.kfold) # 1.96 g soilP m2
-soilP_0_10_rmse_ordkrig <- crossval_ordkrig(soil_0_10cm_shp, 'gP.m2', psill = 7, nugget = 0, model = 'Exp', range=25)
-mean(soilP_0_10_rmse_ordkrig) #1.47 g soilP m2
-soilP_10_30_rmse_ordkrig <- crossval_ordkrig(soil_10_30cm_shp, 'gP.m2', psill = 1, nugget = 0, model = 'Exp', range=25)
-mean(soilP_10_30_rmse_ordkrig) #0.79 g P soilP m2
+soilP_0_30_rmse_ordkrig <- crossval_ordkrig(soil_0_30cm_shp, 'gP.m2')
+mean(soilP_0_30_rmse_ordkrig$rmse.kfold) # 1.96 g soilP m2; r2=0.26
+soilP_0_10_rmse_ordkrig <- crossval_ordkrig(soil_0_10cm_shp, 'gP.m2')
+mean(soilP_0_10_rmse_ordkrig) #1.47 g soilP m2; r2=0.20
+soilP_10_30_rmse_ordkrig <- crossval_ordkrig(soil_10_30cm_shp, 'gP.m2')
+mean(soilP_10_30_rmse_ordkrig) #0.79 g P soilP m2; r2=0.31
 
 #regression krigging model 0-30 cm
 library(relaimpo)
@@ -988,9 +1068,16 @@ regressionKrig <- function(varname, df_pts, width=21, psill=85, model="Sph", ran
 library(randomForest)
 tuneRF(x=as.data.frame(soil_0_30cm_shp)[,c('curvature_mean', 'slope', 'annual_kwh.m2', 'elevation')], soil_0_30cm_shp$kgOrgC.m2, ntreeTry = 100, stepFactor = 1, improve = 0.02)
 RF_kgOrgC_0_30cm <- randomForest(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + elevation, data = soil_0_30cm_shp, mtry=1) #Mean of squared residuals: 0.3649699
+hist(RF_kgOrgC_0_30cm$predicted)
+summary(lm(soil_0_30cm_shp$kgOrgC.m2 ~ RF_kgOrgC_0_30cm$predicted))
 summary(lm(soil_0_30cm_shp$kgOrgC.m2 ~ predict(RF_kgOrgC_0_30cm, soil_0_30cm_shp))) #r2=0.90
 plot(predict(RF_kgOrgC_0_30cm, soil_0_30cm_shp), soil_0_30cm_shp$kgOrgC.m2)
 RF_kgOrgC_0_30cm_clay <- randomForest(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + clay_wtd, data = soil_0_30cm_shp, mtry=1)
+hist(RF_kgOrgC_0_30cm_clay$predicted)
+kgOrgC.m2_RF.terrain4_0_30cm <- predict(RF_kgOrgC_0_30cm, Mar2017_terrain_3m)
+forage_terrain_energy$kgOrgC.m2_RF.terrain4 <- predict(RF_kgOrgC_0_30cm, forage_terrain_energy)
+summary(lm(peak2017 ~ kgOrgC.m2_RF.terrain4, data = forage_terrain_energy)) #Multiple R-squared:  0.1488,	Adjusted R-squared:  0.088 
+#F-statistic: 2.447 on 1 and 14 DF,  p-value: 0.14
 
 #cross validate RF
 set.seed(20161203)
