@@ -1,6 +1,6 @@
 #TO-DO
-#(1) re-check quality of organic C data
-#(2)
+#(1) re-check quality of organic C data [DONE]
+#(2) re-aggregate data because of TN, SIC, and P content calc mistakes.  Reran from line 184 on 1/7/19
 mainDir <- 'C:/Users/smdevine/Desktop/rangeland project'
 terrainDir <- 'C:/Users/smdevine/Desktop/rangeland project/terrain_analysis_r_v3'
 solradDir <- 'C:/Users/smdevine/Desktop/rangeland project/SoilCarbonProject/solrad_analysis'
@@ -185,8 +185,8 @@ soilC_0_10cm <- read.csv(file.path(soilCresults, 'soilC_0_10cm_Camatta.csv'), st
 soilC_10_30cm <- read.csv(file.path(soilCresults, 'soilC_10_30cm_Camatta.csv'), stringsAsFactors = FALSE)
 dim(soilC_0_10cm)
 dim(soilC_10_30cm)
-sum(soilC_0_10cm$orgC.percent > soilC_0_10cm$totC.percent) #4
-sum(soilC_10_30cm$orgC.percent > soilC_10_30cm$totC.percent) #2
+sum(soilC_0_10cm$orgC.percent > soilC_0_10cm$totC.percent) #0
+sum(soilC_10_30cm$orgC.percent > soilC_10_30cm$totC.percent) #0
 
 #read in bulk density data
 #read-in BD_data
@@ -249,55 +249,57 @@ soilC_10_30cm$point_no <- as.integer(gsub('_2', '', soilC_10_30cm$sample.ID))
 soil_0_10cm_shp <- merge(sampling_pts, soilC_0_10cm, by='point_no')
 soil_0_10cm_shp <- merge(soil_0_10cm_shp, soil_chars_0_10, by='point_no')
 soil_0_10cm_shp <- merge(soil_0_10cm_shp, BD_data_0_10cm, by='point_no')
-soil_0_10cm_shp$soil.kg.orgC.m2 <- soil_0_10cm_shp$orgC.percent * soil_0_10cm_shp$bulk_density_g_cm3 * (100 - soil_0_10cm_shp$frags_vol_perc) / 100
-soil_0_10cm_shp$soil.kg.IC.m2 <- soil_0_10cm_shp$inorgC.percent * soil_0_10cm_shp$bulk_density_g_cm3 * (100 - soil_0_10cm_shp$frags_vol_perc) / 100
-soil_0_10cm_shp$soil.kgClay.m2 <- soil_0_10cm_shp$CLAY * soil_0_10cm_shp$bulk_density_g_cm3 * (100 - soil_0_10cm_shp$frags_vol_perc) / 100
-soil_0_10cm_shp$soil.gP.m2 <- soil_0_10cm_shp$P1 * soil_0_10cm_shp$bulk_density_g_cm3 * (100 - soil_0_10cm_shp$frags_vol_perc) / 100 * 0.1 #see notes
+soil_0_10cm_shp$kgOrgC.m2 <- soil_0_10cm_shp$orgC.percent * soil_0_10cm_shp$bulk_density_g_cm3 * (100 - soil_0_10cm_shp$frags_vol_perc) / 100
+soil_0_10cm_shp$kgIC.m2 <- soil_0_10cm_shp$inorgC.percent * soil_0_10cm_shp$bulk_density_g_cm3 * (100 - soil_0_10cm_shp$frags_vol_perc) / 100
+soil_0_10cm_shp$kgClay.m2 <- soil_0_10cm_shp$CLAY * soil_0_10cm_shp$bulk_density_g_cm3 * (100 - soil_0_10cm_shp$frags_vol_perc) / 100
+soil_0_10cm_shp$gP.m2 <- soil_0_10cm_shp$HCO3_P * soil_0_10cm_shp$bulk_density_g_cm3 * (100 - soil_0_10cm_shp$frags_vol_perc) / 100 * 0.1 #see notes; P1 is Bray and HCO3-P is Olsen, better for high pH soils
 soil_0_10cm_shp$energy_colors <- ifelse(soil_0_10cm_shp$annual_kwh.m2 <= 1200, 'blue', ifelse(soil_0_10cm_shp$annual_kwh.m2 > 1200 & soil_0_10cm_shp$annual_kwh.m2 < 1410, 'orange2', 'red3'))
 soil_0_10cm_shp$WMPD_mm <- (soil_0_10cm_shp$CLAY * 0.001 ) / 100 + (soil_0_10cm_shp$SILT * 0.026) / 100 + (soil_0_10cm_shp$SAND * 1.025) / 100
-soil_0_10cm_shp$soil.kg.TN.m2 <- soil_0_10cm_shp$totN.percent * soil_0_10cm_shp$bulk_density_g_cm3 * (100 - soil_0_10cm_shp$frags_vol_perc) / 100
-plot(soil_0_10cm_shp$soil.kg.orgC.m2, soil_0_10cm_shp$soil.kg.TN.m2)
-text(soil_0_10cm_shp$soil.kg.orgC.m2, soil_0_10cm_shp$soil.kg.TN.m2, labels=soil_0_10cm_shp$point_no, offset=0.1, pos=1)
-summary(lm(soil.kg.orgC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_0_10cm_shp))) #r^2=0.21, p.val=.002, slope, solrad, and curvature all sig
+soil_0_10cm_shp$kgTN.m2 <- soil_0_10cm_shp$totN.percent * soil_0_10cm_shp$bulk_density_g_cm3 * (100 - soil_0_10cm_shp$frags_vol_perc) / 100
+plot(soil_0_10cm_shp$kgOrgC.m2, soil_0_10cm_shp$kgTN.m2)
+text(soil_0_10cm_shp$kgOrgC.m2, soil_0_10cm_shp$kgTN.m2, labels=soil_0_10cm_shp$point_no, offset=0.1, pos=1)
+summary(lm(kgOrgC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_0_10cm_shp))) #r^2=0.21, p.val=.002, slope, solrad, and curvature all sig
 summary(lm(orgC.percent ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_0_10cm_shp))) #r2=0.16
-summary(lm(soil.kg.IC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_0_10cm_shp))) #NS p.val=0.28
-summary(lm(soil.kg.IC.m2 ~ annual_kwh.m2, data=as.data.frame(soil_0_10cm_shp)))
-summary(lm(soil.kg.IC.m2 ~ elevation, data=as.data.frame(soil_0_10cm_shp)))
-summary(lm(soil.kgClay.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_0_10cm_shp))) #r^2=0.14, p.val=0.004; elevation most sig
+summary(lm(kgIC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_0_10cm_shp))) #NS p.val=0.28
+summary(lm(kgIC.m2 ~ annual_kwh.m2, data=as.data.frame(soil_0_10cm_shp)))
+summary(lm(kgIC.m2 ~ elevation, data=as.data.frame(soil_0_10cm_shp)))
+summary(lm(kgClay.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_0_10cm_shp))) #r^2=0.14, p.val=0.004; elevation most sig
 summary(lm(WMPD_mm ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_0_10cm_shp))) #r^2=0.23, p.val < 0.001; elevation most sig
-summary(lm(soil.gP.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_0_10cm_shp))) #r^2=0.12, p.val=0.01; aspect most sig
-summary(lm(soil.kg.orgC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation + soil.kgClay.m2, data=as.data.frame(soil_0_10cm_shp))) #r2=0.26 p.val < .001
-summary(lm(soil.kg.orgC.m2 ~ slope + curvature_mean + soil.kgClay.m2, data=as.data.frame(soil_0_10cm_shp))) #r^2=0.21 p.val < 0.001; all params sig
-summary(lm(soil.kg.orgC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation + WMPD_mm, data=as.data.frame(soil_0_10cm_shp))) #r^2=0.24
+summary(lm(gP.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_0_10cm_shp))) #r^2=0.12, p.val=0.01; aspect most sig
+summary(lm(kgOrgC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation + kgClay.m2, data=as.data.frame(soil_0_10cm_shp))) #r2=0.26 p.val < .001
+summary(lm(kgOrgC.m2 ~ slope + curvature_mean + kgClay.m2, data=as.data.frame(soil_0_10cm_shp))) #r^2=0.21 p.val < 0.001; all params sig
+summary(lm(kgOrgC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation + WMPD_mm, data=as.data.frame(soil_0_10cm_shp))) #r^2=0.24
 shapefile(soil_0_10cm_shp, file.path(soilCresults, 'shapefiles', 'soil_0_10cm.shp'), overwrite=TRUE)
 write.csv(as.data.frame(soil_0_10cm_shp), file.path(soilCresults, 'shapefiles', 'soil_0_10cm_df.csv'), row.names = FALSE)
-hist(soil_0_10cm_shp$soil.kg.orgC.m2)
-plot(soil_0_10cm_shp, cex=soil_0_10cm_shp$soil.kg.orgC.m2/2, pch=2, col=soil_0_10cm_shp$energy_colors)
+hist(soil_0_10cm_shp$kgOrgC.m2)
+plot(soil_0_10cm_shp, cex=soil_0_10cm_shp$kgOrgC.m2/2, pch=2, col=soil_0_10cm_shp$energy_colors)
 text(soil_0_10cm_shp, labels=soil_0_10cm_shp$point_no, offset=0.2, pos=1)
 plot(soil_0_10cm_shp[soil_0_10cm_shp$orgC.to.totC>0.9,], add=TRUE, pch=20, cex=0.8)
+
+#now 10-30 cm soils
 soil_10_30cm_shp <- merge(sampling_pts, soilC_10_30cm, by='point_no')
 soil_10_30cm_shp <- merge(soil_10_30cm_shp, soil_chars_10_30, by='point_no')
 soil_10_30cm_shp <- merge(soil_10_30cm_shp, BD_data_10_30cm, by='point_no')
-soil_10_30cm_shp$soil.kg.orgC.m2 <- soil_10_30cm_shp$orgC.percent * soil_10_30cm_shp$bulk_density_g_cm3 * 2 * (100 - soil_10_30cm_shp$frags_vol_perc) / 100
-soil_10_30cm_shp$soil.kgClay.m2 <- soil_10_30cm_shp$CLAY * soil_10_30cm_shp$bulk_density_g_cm3 * 2 * (100 - soil_10_30cm_shp$frags_vol_perc) / 100
-soil_10_30cm_shp$soil.kg.IC.m2 <- soil_10_30cm_shp$inorgC.percent * soil_10_30cm_shp$bulk_density_g_cm3 * (100 - soil_10_30cm_shp$frags_vol_perc) / 100
-soil_10_30cm_shp$soil.gP.m2 <- soil_10_30cm_shp$P1 * soil_10_30cm_shp$bulk_density_g_cm3 * (100 - soil_10_30cm_shp$frags_vol_perc) / 100 * 0.1 #see notes
-soil_10_30cm_shp$soil.kg.TN.m2 <- soil_10_30cm_shp$totN.percent * soil_10_30cm_shp$bulk_density_g_cm3 * (100 - soil_10_30cm_shp$frags_vol_perc) / 100
+soil_10_30cm_shp$kgOrgC.m2 <- soil_10_30cm_shp$orgC.percent * soil_10_30cm_shp$bulk_density_g_cm3 * 2 * (100 - soil_10_30cm_shp$frags_vol_perc) / 100
+soil_10_30cm_shp$kgClay.m2 <- soil_10_30cm_shp$CLAY * soil_10_30cm_shp$bulk_density_g_cm3 * 2 * (100 - soil_10_30cm_shp$frags_vol_perc) / 100
+soil_10_30cm_shp$kgIC.m2 <- soil_10_30cm_shp$inorgC.percent * soil_10_30cm_shp$bulk_density_g_cm3 * 2 * (100 - soil_10_30cm_shp$frags_vol_perc) / 100
+soil_10_30cm_shp$gP.m2 <- soil_10_30cm_shp$HCO3_P * soil_10_30cm_shp$bulk_density_g_cm3 * 2 * (100 - soil_10_30cm_shp$frags_vol_perc) / 100 * 0.1 #see notes
+soil_10_30cm_shp$kgTN.m2 <- soil_10_30cm_shp$totN.percent * soil_10_30cm_shp$bulk_density_g_cm3 * 2 * (100 - soil_10_30cm_shp$frags_vol_perc) / 100
 soil_10_30cm_shp$energy_colors <- ifelse(soil_10_30cm_shp$annual_kwh.m2 <= 1200, 'blue', ifelse(soil_10_30cm_shp$annual_kwh.m2 > 1200 & soil_10_30cm_shp$annual_kwh.m2 < 1410, 'orange2', 'red3'))
 soil_10_30cm_shp$WMPD_mm <- (soil_10_30cm_shp$CLAY * 0.001 ) / 100 + (soil_10_30cm_shp$SILT * 0.026) / 100 + (soil_10_30cm_shp$SAND * 1.025) / 100
-plot(soil_10_30cm_shp$soil.kg.orgC.m2, soil_10_30cm_shp$soil.kg.TN.m2)
-summary(lm(soil.kg.orgC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_10_30cm_shp))) #r^2=0.50, p.val=.002, all params sig.
+plot(soil_10_30cm_shp$kgOrgC.m2, soil_10_30cm_shp$kgTN.m2)
+summary(lm(kgOrgC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_10_30cm_shp))) #r^2=0.50, p.val=.002, all params sig.
 summary(lm(orgC.percent ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_10_30cm_shp))) #r^2=0.39
-summary(lm(soil.kg.IC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_10_30cm_shp))) #r^2=0.48
-summary(lm(soil.kg.IC.m2 ~ annual_kwh.m2, data=as.data.frame(soil_10_30cm_shp))) #r^2=0.11
-summary(lm(soil.kg.IC.m2 ~ elevation, data=as.data.frame(soil_10_30cm_shp)))
-summary(lm(soil.kgClay.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_10_30cm_shp))) #r^2=0.31, p.val=0.004; elevation most sig
+summary(lm(kgIC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_10_30cm_shp))) #r^2=0.48
+summary(lm(kgIC.m2 ~ annual_kwh.m2, data=as.data.frame(soil_10_30cm_shp))) #r^2=0.11
+summary(lm(kgIC.m2 ~ elevation, data=as.data.frame(soil_10_30cm_shp)))
+summary(lm(kgClay.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_10_30cm_shp))) #r^2=0.31, p.val=0.004; elevation most sig
 summary(lm(WMPD_mm ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_10_30cm_shp))) #r^2=0.28, p.val < 0.001; elevation most sig
-summary(lm(soil.gP.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_10_30cm_shp))) #r^2=0.28, p.val=0.01; aspect most sig
-summary(lm(soil.gP.m2 ~ soil.kg.IC.m2, data = as.data.frame(soil_10_30cm_shp))) #r^2=0.35
-summary(lm(soil.kg.orgC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation + soil.kgClay.m2, data=as.data.frame(soil_10_30cm_shp))) #r2=0.55 p.val < .001
-summary(lm(soil.kg.orgC.m2 ~ slope + curvature_mean + soil.kgClay.m2, data=as.data.frame(soil_10_30cm_shp))) #r^2=0.43 p.val < 0.001; all params sig
-summary(lm(soil.kg.orgC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation + WMPD_mm, data=as.data.frame(soil_10_30cm_shp))) #r^2=0.53
+summary(lm(gP.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_10_30cm_shp))) #r^2=0.28, p.val=0.01; aspect most sig
+summary(lm(gP.m2 ~ kgIC.m2, data = as.data.frame(soil_10_30cm_shp))) #r^2=0.35
+summary(lm(kgOrgC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation + kgClay.m2, data=as.data.frame(soil_10_30cm_shp))) #r2=0.55 p.val < .001
+summary(lm(kgOrgC.m2 ~ slope + curvature_mean + kgClay.m2, data=as.data.frame(soil_10_30cm_shp))) #r^2=0.43 p.val < 0.001; all params sig
+summary(lm(kgOrgC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation + WMPD_mm, data=as.data.frame(soil_10_30cm_shp))) #r^2=0.53
 shapefile(soil_10_30cm_shp, file.path(soilCresults, 'shapefiles', 'soil_10_30cm.shp'), overwrite=TRUE)
 write.csv(as.data.frame(soil_10_30cm_shp), file.path(soilCresults, 'shapefiles', 'soil_10_30cm_df.csv'), row.names = FALSE)
 
@@ -306,11 +308,11 @@ names(soil_0_10cm_shp)
 soil_0_10cm_shp$point_no - soil_10_30cm_shp$point_no
 soil_0_30cm_shp <- soil_0_10cm_shp[,1:15]
 names(soil_0_30cm_shp)
-soil_0_30cm_shp$kgOrgC.m2 <- soil_0_10cm_shp$soil.kg.orgC.m2 + soil_10_30cm_shp$soil.kg.orgC.m2
-soil_0_30cm_shp$kgTN.m2 <- soil_0_10cm_shp$soil.kg.TN.m2 + soil_10_30cm_shp$soil.kg.TN.m2
-soil_0_30cm_shp$kgClay.m2 <- soil_0_10cm_shp$soil.kgClay.m2 + soil_10_30cm_shp$soil.kgClay.m2
-soil_0_30cm_shp$kgIC.m2 <- soil_0_10cm_shp$soil.kg.IC.m2 + soil_10_30cm_shp$soil.kg.IC.m2
-soil_0_30cm_shp$gP.m2 <- soil_0_10cm_shp$soil.gP.m2 + soil_10_30cm_shp$soil.gP.m2
+soil_0_30cm_shp$kgOrgC.m2 <- soil_0_10cm_shp$kgOrgC.m2 + soil_10_30cm_shp$kgOrgC.m2
+soil_0_30cm_shp$kgTN.m2 <- soil_0_10cm_shp$kgTN.m2 + soil_10_30cm_shp$kgTN.m2
+soil_0_30cm_shp$kgClay.m2 <- soil_0_10cm_shp$kgClay.m2 + soil_10_30cm_shp$kgClay.m2
+soil_0_30cm_shp$kgIC.m2 <- soil_0_10cm_shp$kgIC.m2 + soil_10_30cm_shp$kgIC.m2
+soil_0_30cm_shp$gP.m2 <- soil_0_10cm_shp$gP.m2 + soil_10_30cm_shp$gP.m2
 soil_0_30cm_shp$WMPD_mm <- (soil_0_10cm_shp$WMPD_mm * 10 + soil_10_30cm_shp$WMPD_mm * 20) / 30 
 soil_0_30cm_shp$sand_wtd <- (10*soil_0_10cm_shp$SAND + 20*soil_10_30cm_shp$SAND) / 30
 soil_0_30cm_shp$silt_wtd <- (10*soil_0_10cm_shp$SILT + 20*soil_10_30cm_shp$SILT) / 30
@@ -322,7 +324,7 @@ summary(soil_0_30cm_shp$kgOrgC.m2)
 hist(soil_0_30cm_shp$kgIC.m2)
 hist(soil_0_30cm_shp$kgTN.m2)
 hist(soil_0_30cm_shp$gP.m2)
-hist(soil_0_30cm_shp$MWPD_mm)
+hist(soil_0_30cm_shp$WMPD_mm)
 hist(soil_0_30cm_shp$sand_wtd)
 hist(soil_0_30cm_shp$silt_wtd)
 hist(soil_0_30cm_shp$clay_wtd)
@@ -345,4 +347,5 @@ plot(lm(kgOrgC.m2 ~ curvature_mean + elevation + slope+ annual_kwh.m2 + WMPD_mm,
 orgC_lm <- lm(kgOrgC.m2 ~ curvature_mean + elevation + slope+ annual_kwh.m2 + WMPD_mm, data=soil_0_30cm_shp)
 summary(lm(kgOrgC.m2 ~ curvature_mean + elevation + slope+ annual_kwh.m2 + kgClay.m2, data=soil_0_30cm_shp))
 summary(lm(kgIC.m2 ~ curvature_mean + elevation + slope+ annual_kwh.m2 + kgClay.m2, data=soil_0_30cm_shp))
-#write.csv(as.data.frame(soil_0_30cm_shp), file.path(soilCresults, 'shapefiles', 'soil_0_30cm_df.csv'), row.names = FALSE)
+write.csv(as.data.frame(soil_0_30cm_shp), file.path(soilCresults, 'shapefiles', 'soil_0_30cm_df.csv'), row.names = FALSE)
+shapefile(soil_0_30cm_shp, file.path(soilCresults, 'shapefiles', 'soil_0_30cm.shp'), overwrite=TRUE)
