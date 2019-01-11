@@ -208,29 +208,29 @@ soil_chars_10_30$point_no <-  as.integer(gsub('_2', '', soil_chars_10_30$sample.
 sampling_pts <- shapefile(file.path(mainDir, 'sampling points 2018', 'soil_sampling_points.shp'))
 #biomass_Apr2017 <- raster(file.path(mainDir, 'sampling strategy April 2018', 'Biomass_2017-04-10_APAR.tif'))
 sampling_pts$point_no <- as.integer(gsub('point', '', sampling_pts$Comment))
-list.files(file.path(terrainDir, 'filtered_Hogan'))
+#list.files(file.path(terrainDir, 'filtered_Hogan'))
 Mar2017_terrain_3m <- stack(list.files(file.path(terrainDir, 'filtered_Hogan'), full.names = TRUE))
-names(Mar2017_terrain_3m)
+#names(Mar2017_terrain_3m)
 names(Mar2017_terrain_3m) <- c('aspect', 'curvature_mean', 'curvature_plan', 'curvature_profile', 'elevation', 'slope', 'TCI')
 #read in 3 m solrad results produced in ArcGIS
-list.files(file.path(solradDir)) #all files were sky size 500 x 500 and 64 calc directions
+#list.files(file.path(solradDir)) #all files were sky size 500 x 500 and 64 calc directions
  #all v2 files were sky size 500 x 500 and 64 calc directions
 solrad_raster <- raster(file.path(solradDir, 'solrad_3m_filtered.tif'))
 solrad_raster <- solrad_raster / 1000
 solrad <- shapefile(file.path(solradDir, 'solrad_105pts.shp'))
-plot(solrad)
-names(solrad)
+#plot(solrad)
+#names(solrad)
 solrad$point_no <- sampling_pts$point_no #this is correct labelling
-text(solrad, labels=solrad$point_no, offset=0.1, pos=1)
+#text(solrad, labels=solrad$point_no, offset=0.1, pos=1)
 #solrad$annual_kwh.m2 <- apply(as.data.frame(solrad[ ,1:52]), 1, sum) / 1000
 solrad_df <- as.data.frame(solrad)
-colnames(solrad_df)
-head(solrad_df)
+#colnames(solrad_df)
+#head(solrad_df)
 solrad_df$annual_kwh.m2 <- apply(solrad_df[ ,1:52], 1, sum) / 1000
-summary(solrad_df$annual_kwh.m2)
+#summary(solrad_df$annual_kwh.m2)
 #check values against raster
-solrad_df$check_sums <- extract(solrad_raster, coordinates(solrad)[,1:2])
-plot(solrad_df$annual_kwh.m2, solrad_df$check_sums) #computational perfection!
+#solrad_df$check_sums <- extract(solrad_raster, coordinates(solrad)[,1:2])
+#plot(solrad_df$annual_kwh.m2, solrad_df$check_sums) #computational perfection!
 Mar2017_terrain_3m$solrad <- solrad_raster
 #length(seq.Date(as.Date('Oct_01_2017', '%b_%d_%Y'), as.Date('Apr_15_2018', '%b_%d_%Y'), by='day')) #197 days
 #format(as.Date('Oct_01_2017', '%b_%d_%Y'), '%V') #so, T38-T51
@@ -280,15 +280,16 @@ soil_0_10cm_shp <- merge(sampling_pts, soilC_0_10cm, by='point_no')
 soil_0_10cm_shp <- merge(soil_0_10cm_shp, soil_chars_0_10, by='point_no')
 soil_0_10cm_shp <- merge(soil_0_10cm_shp, BD_data_0_10cm, by='point_no')
 #correct points 2 and 3 data for these:
-names(soil_0_10cm_shp)
+#names(soil_0_10cm_shp)
 vars_to_fix <- c("totC.percent", "totN.percent", "orgC.percent", "inorgC.percent", "CaCO3.percent", "OM", "ENR", "P1", "HCO3_P", "PH", "K", "MG", "CA", "NA.", "CEC", "K_PCT", "MG_PCT", "CA_PCT", "H_PCT", "NA_PCT", "S", "SAND", "SILT", "CLAY", "bulk_density_g_cm3")
 soil_0_10cm_shp$orgC.percent[2]
 soil_10_30cm_shp$orgC.percent[2]
-# coeffs <- lm(c(soil_10_30cm_shp$orgC.percent[2], soil_0_10cm_shp$orgC.percent[2]) ~ c(2.5, 20))$coefficients
-# coeffs
-# coeffs[1] + coeffs[2] * 5 #to get mid-point value, assuming linear interpolation from 2.5 cm to 20 cm
+coeffs <- lm(c(soil_0_10cm_shp$orgC.percent[2], soil_10_30cm_shp$orgC.percent[2]) ~ c(2.5, 20))$coefficients
+coeffs
+coeffs[1] + coeffs[2] * 2.5
+coeffs[1] + coeffs[2] * 5 #to get mid-point value of 0-10 cm layer, assuming linear interpolation from 2.5 cm to 20 cm
 fix_0_5_samples <- function(varname, point) {
-  coeffs <- lm(c(soil_10_30cm_shp[[varname]][point], soil_0_10cm_shp[[varname]][point]) ~ c(2.5, 20))$coefficients #2.5 is midpoint for 0-5 cm sample; 20 is midpoint for 10-30 cm sample
+  coeffs <- lm(c(soil_0_10cm_shp[[varname]][point], soil_10_30cm_shp[[varname]][point]) ~ c(2.5, 20))$coefficients #2.5 is midpoint for 0-5 cm sample; 20 is midpoint for 10-30 cm sample
   coeffs[1] + coeffs[2] * 5 #5 is midpoint for 0-10 cm sample; so data is corrected to a 0-10 cm slice based on 0-5 and 10-30 cm data
 }
 #fix point 2, which was a 0-5 cm sample
@@ -312,7 +313,7 @@ soil_0_10cm_shp$WMPD_mm <- (soil_0_10cm_shp$CLAY * 0.001 ) / 100 + (soil_0_10cm_
 soil_0_10cm_shp$kgTN.m2 <- soil_0_10cm_shp$totN.percent * soil_0_10cm_shp$bulk_density_g_cm3 * (100 - soil_0_10cm_shp$frags_vol_perc) / 100
 plot(soil_0_10cm_shp$kgOrgC.m2, soil_0_10cm_shp$kgTN.m2)
 text(soil_0_10cm_shp$kgOrgC.m2, soil_0_10cm_shp$kgTN.m2, labels=soil_0_10cm_shp$point_no, offset=0.1, pos=1)
-summary(lm(kgOrgC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_0_10cm_shp))) #r^2=0.21, p.val=.002, slope, solrad, and curvature all sig
+summary(lm(kgOrgC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_0_10cm_shp))) #r^2=0.22, p.val=.002, slope, solrad, and curvature all sig
 summary(lm(orgC.percent ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_0_10cm_shp))) #r2=0.16
 summary(lm(kgIC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation, data=as.data.frame(soil_0_10cm_shp))) #NS p.val=0.28
 summary(lm(kgIC.m2 ~ annual_kwh.m2, data=as.data.frame(soil_0_10cm_shp)))
@@ -349,6 +350,7 @@ plot(soil_0_30cm_shp, cex=soil_0_30cm_shp$kgOrgC.m2/3, pch=20)
 plot(soil_0_30cm_shp, cex=soil_0_30cm_shp$kgIC.m2/2, pch=20)
 hist(soil_0_30cm_shp$kgOrgC.m2)
 summary(soil_0_30cm_shp$kgOrgC.m2)
+soil_0_30cm_shp$kgOrgC.m2[2]
 hist(soil_0_30cm_shp$kgIC.m2)
 hist(soil_0_30cm_shp$kgTN.m2)
 hist(soil_0_30cm_shp$gP.m2)
