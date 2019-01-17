@@ -1610,8 +1610,17 @@ mean(soilP_10_30_rmse_regkrig$rmse.kfold) # 0.487 g P soilP m2; r^2=0
 #random forest test
 #best current lm model: kgOrgC.m2 ~ NDVI_2017max_1m + curvature_mean + annual_kwh.m2 + slope + elevation + Red_Nov2016 + Red_May2017 + NIR_May2017, data = soil_0_30cm_shp
 library(randomForest)
-tuneRF(x=as.data.frame(soil_0_30cm_shp)[,c('curvature_mean', 'slope', 'annual_kwh.m2', 'elevation', 'NDVI_2017mean_1m')], soil_0_30cm_shp$kgOrgC.m2, ntreeTry = 100, stepFactor = 1, improve = 0.02)
-RF_kgOrgC_0_30cm <- randomForest(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + elevation, data = soil_0_30cm_shp, mtry=1) #Mean of squared residuals: 0.3649699
+tuneRF(x=as.data.frame(soil_0_30cm_shp)[,c('curvature_mean', 'elevation', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m')], soil_0_30cm_shp$kgOrgC.m2, ntreeTry = 400, stepFactor = 1, improve = 0.02)
+RF_kgOrgC_0_30cm <- randomForest(kgOrgC.m2 ~ curvature_mean + NDVI_2017mean_1m + NDVI_2018mean_1m + elevation+ annual_kwh.m2, data = soil_0_30cm_shp, mtry=1) #Mean of squared residuals: 0.3649699
+summary(lm(soil_0_30cm_shp$kgOrgC.m2 ~ RF_kgOrgC_0_30cm$predicted))
+RF_kgOrgC_0_30cm$importance
+
+new_grid <- expand.grid(mtry = 1:10)
+train_result <- train(x=as.data.frame(soil_0_30cm_shp)[,c('curvature_mean', 'elevation', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m')], y=soil_0_30cm_shp$kgOrgC.m2, method = 'rf', tuneGrid = new_grid)
+train_result$results
+
+
+mean(RF_kgOrgC_0_30cm$mse)
 hist(RF_kgOrgC_0_30cm$predicted)
 RF_kgOrgC_0_30cm_8var <- randomForest(kgOrgC.m2 ~ NDVI_2017max_1m + curvature_mean + annual_kwh.m2 + slope + elevation + Red_Nov2016 + Red_May2017 + NIR_May2017, data = soil_0_30cm_shp, mtry=2)
 hist(RF_kgOrgC_0_30cm_8var$predicted)
@@ -1675,11 +1684,10 @@ crossval_RF <- function(df_pts, varname, ntree=75, model='~ curvature_mean + slo
   #print(summary(lm(df_pts[[varname]] ~ predictions)))
   list(rmse.kfold=rmse, oob.predictions=predictions)
 }
-orgC_0_30_rmse_RF <- crossval_RF(soil_0_30cm_shp, 'kgOrgC.m2', model=model_to_test)
-mean(orgC_0_30_rmse_RF$rmse.kfold)
+orgC_0_30_rmse_RF <- crossval_RF(soil_0_30cm_shp, 'kgOrgC.m2', model='~ curvature_mean + NDVI_2017mean_1m + NDVI_2018mean_1m + elevation')
 plot(orgC_0_30_rmse_RF$oob.predictions, soil_0_30cm_shp$kgOrgC.m2)
 abline(0,1,lty=2)
-mean(orgC_0_30_rmse_RF$rmse.kfold) #rmse: 0.5278; r^2:0.38
+mean(orgC_0_30_rmse_RF$rmse.kfold) #rmse: 0.514; r^2:0.35
 orgC_0_10_rmse_RF <- crossval_RF(soil_0_10cm_shp, 'kgOrgC.m2')
 mean(orgC_0_10_rmse_RF$rmse.kfold) #0.363; r^2=0.16
 orgC_10_30_rmse_RF <- crossval_RF(soil_10_30cm_shp, 'kgOrgC.m2')
@@ -1755,8 +1763,10 @@ model_selection_RF <- function(df, varname, depth, varDir) {
   list(RMSEs=mean_RMSEs_all, OOBs=oob_predictions_all, test_grid=models_to_test, best_models=final_summary)
 }
 orgC_0_30_RF8var <- model_selection_RF(soil_0_30cm_shp, 'kgOrgC.m2', '0_30cm', 'SOC')
-orgC_0_30_RF8var
+orgC_0_30_RF8var$best_models
 
+clay_0_30_RF8var <- model_selection_RF(soil_0_30cm_shp, 'clay_wtd', '0_30cm', 'Clay')
+clay_0_30_RF8var$best_models
 #export model testing results to csvs
 #soil organic carbon results
 orgC_0_30_model_comparison_RMSEs <- data.frame(null=orgC_0_30_rmse_null$rmse.kfold, idw=orgC_0_30_rmse_idw$rmse.kfold, nn=orgC_0_30_rmse_nn$rmse.kfold, ordkrig=orgC_0_30_rmse_ordkrig$rmse.kfold, regkrig=orgC_0_30_rmse_regkrig$rmse.kfold, lm_4terrain=orgC_0_30_rmse_lm$rmse.kfold, lm_3terrain_clay=orgC_0_30_rmse_lm_clay$rmse.kfold, RF_4terrain=orgC_0_30_rmse_RF$rmse.kfold)
