@@ -342,6 +342,7 @@ soil_0_30cm_shp$kgTN.m2 <- soil_0_10cm_shp$kgTN.m2 + soil_10_30cm_shp$kgTN.m2
 soil_0_30cm_shp$kgClay.m2 <- soil_0_10cm_shp$kgClay.m2 + soil_10_30cm_shp$kgClay.m2
 soil_0_30cm_shp$kgIC.m2 <- soil_0_10cm_shp$kgIC.m2 + soil_10_30cm_shp$kgIC.m2
 soil_0_30cm_shp$gP.m2 <- soil_0_10cm_shp$gP.m2 + soil_10_30cm_shp$gP.m2
+#this weighting scheme improved in soilC_spatial.R
 soil_0_30cm_shp$WMPD_mm <- (soil_0_10cm_shp$WMPD_mm * 10 + soil_10_30cm_shp$WMPD_mm * 20) / 30 
 soil_0_30cm_shp$sand_wtd <- (10*soil_0_10cm_shp$SAND + 20*soil_10_30cm_shp$SAND) / 30
 soil_0_30cm_shp$silt_wtd <- (10*soil_0_10cm_shp$SILT + 20*soil_10_30cm_shp$SILT) / 30
