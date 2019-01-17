@@ -47,6 +47,8 @@ library(spdep)
 library(automap)
 set.seed(20161203)
 library(dismo)
+kf <- kfold(1:105, k=20)
+
 
 #read-in 0-30 cm and set-up k-fold tags [go to line 370 to read-in 0-30cm data now]
 #soil_0_30cm_df <- read.csv(file.path(soilCresults, 'shapefiles', 'soil_0_30cm_df.csv'), stringsAsFactors = FALSE)
@@ -57,7 +59,6 @@ soil_0_30cm_shp$kgTC.m2 <- soil_0_30cm_shp$kgOrgC.m2 + soil_0_30cm_shp$kgIC.m2
 sd(soil_0_30cm_shp$kgOrgC.m2)/mean(soil_0_30cm_shp$kgOrgC.m2) #CV is 19.5%
 soil_0_30cm_shp$aspect_class <- ifelse(soil_0_30cm_shp$aspect >= 45 & soil_0_30cm_shp$aspect < 135, 'east', ifelse(soil_0_30cm_shp$aspect >= 135 & soil_0_30cm_shp$aspect < 225, 'south', ifelse(soil_0_30cm_shp$aspect >= 225 & soil_0_30cm_shp$aspect < 315, 'west', 'north')))
 soil_0_30cm_shp$aspect_class_sp <- ifelse(soil_0_30cm_shp$aspect >= 67.5 & soil_0_30cm_shp$aspect < 112.5, 'east', ifelse(soil_0_30cm_shp$aspect >= 112.5 & soil_0_30cm_shp$aspect < 157.5, 'southeast', ifelse(soil_0_30cm_shp$aspect >= 157.5 & soil_0_30cm_shp$aspect < 202.5, 'south', ifelse(soil_0_30cm_shp$aspect >= 202.5 & soil_0_30cm_shp$aspect < 247.5, 'southwest', ifelse(soil_0_30cm_shp$aspect >= 247.5 & soil_0_30cm_shp$aspect < 292.5, 'west', ifelse(soil_0_30cm_shp$aspect >= 292.5 & soil_0_30cm_shp$aspect < 337.5, 'northwest', ifelse(soil_0_30cm_shp$aspect >= 337.5 & soil_0_30cm_shp$aspect < 22.5, 'north', 'northeast')))))))
-kf <- kfold(soil_0_30cm_shp, k=20)
 
 #0-10 dataset (modified orgC, TN, clay, IC, and P colnames to match naming conventions for 0-30)
 soil_0_10cm_df <- read.csv(file.path(soilCresults, 'shapefiles', 'soil_0_10cm_df.csv'), stringsAsFactors = FALSE)
@@ -408,7 +409,7 @@ soil_10_30cm_shp <- SpatialPointsDataFrame(soil_10_30cm_df[,c('coords.x1', 'coor
 
 #create grid for spatial predictions and upscaling NDVI & reflectance data to same grid
 r <- raster(Mar2017_terrain_3m)
-e <- extent(c(xmin(soil_0_30cm_shp)-10, xmax(soil_0_30cm_shp)+10, ymin(soil_0_30cm_shp) - 10, ymax(soil_0_30cm_shp) + 10))
+e <- extent(c(xmin(soil_0_30cm_shp)-50, xmax(soil_0_30cm_shp)+50, ymin(soil_0_30cm_shp) - 50, ymax(soil_0_30cm_shp) + 50))
 r <- crop(r, e)
 #r <- raster(xmn=(xmin(soil_0_30cm_shp)-10), xmx=(xmax(soil_0_30cm_shp)+10), ymn=(ymin(soil_0_30cm_shp) - 10), ymx=(ymax(soil_0_30cm_shp) + 10), resolution=3, crs=crs(soil_0_30cm_shp))
 
@@ -446,22 +447,19 @@ soil_0_30cm_shp$slope_norm <- normalize_var(soil_0_30cm_shp$slope)
 soil_0_30cm_shp$annual_kwh.m2_norm <- normalize_var(soil_0_30cm_shp$annual_kwh.m2)
 soil_0_30cm_shp$elevation_norm <- normalize_var(soil_0_30cm_shp$elevation)
 soil_0_30cm_shp$NDVI_2017mean_1m_norm <- normalize_var(soil_0_30cm_shp$NDVI_2017mean_1m)
-soil_0_30cm_shp$NIR_meanGS2017_norm <- normalize_var(soil_0_30cm_shp$NIR_meanGS2017)
-soil_0_30cm_shp$Red_meanGS2017_norm <- normalize_var(soil_0_30cm_shp$Red_meanGS2017)
-soil_0_30cm_shp$Red_meanGS2017_norm
+# soil_0_30cm_shp$NIR_meanGS2017_norm <- normalize_var(soil_0_30cm_shp$NIR_meanGS2017)
+# soil_0_30cm_shp$Red_meanGS2017_norm <- normalize_var(soil_0_30cm_shp$Red_meanGS2017)
+# soil_0_30cm_shp$Red_meanGS2017_norm
 
 summary(lm(kgOrgC.m2 ~ curvature_mean_norm + slope_norm + annual_kwh.m2_norm + elevation_norm + NDVI_2017mean_1m_norm, data =  soil_0_30cm_shp))
-summary(lm(kgOrgC.m2 ~ curvature_mean_norm + slope_norm + annual_kwh.m2_norm + elevation_norm + NDVI_2017mean_1m_norm + NIR_May2017_norm + Red_May2017_norm, data =  soil_0_30cm_shp))
-summary(lm(kgOrgC.m2 ~ curvature_mean_norm + slope_norm + annual_kwh.m2_norm + elevation_norm + Red_May2017_norm, data =  soil_0_30cm_shp))
-summary(lm(kgOrgC.m2 ~ curvature_mean_norm + slope_norm + annual_kwh.m2_norm + elevation_norm + NDVI_2017mean_1m_norm + Red_May2017_norm, data =  soil_0_30cm_shp))
-plot(lm(kgOrgC.m2 ~ curvature_mean_norm + slope_norm + annual_kwh.m2_norm + elevation_norm + NDVI_2017max_1m_norm,, data =  soil_0_30cm_shp))
+plot(lm(kgOrgC.m2 ~ curvature_mean_norm + slope_norm + annual_kwh.m2_norm + elevation_norm + NDVI_2017meam_1m_norm, data =  soil_0_30cm_shp))
+
 Mar2017_terrain_3m_cropped <- crop(Mar2017_terrain_3m, r)
 #Mar2017_terrain_3m_cropped$maxNDVI_2017 <- resample(maxNDVI_2017, Mar2017_terrain_3m_cropped)
-Mar2017_terrain_3m_cropped$meanNDVI_2017 <- resample(meanNDVI_2017, Mar2017_terrain_3m_cropped)
+Mar2017_terrain_3m_cropped$NDVI_2017mean_1m <- resample(meanNDVI_2017, Mar2017_terrain_3m_cropped) #naming of NDVI is only to match soil_0_30cm
 soil_0_30cm_shp$meanNDVI2017test <- extract(Mar2017_terrain_3m_cropped$meanNDVI_2017, soil_0_30cm_shp)
 summary(lm(NDVI_2017mean_1m ~ meanNDVI2017test, data = soil_0_30cm_shp)) #r2=0.90
 plot(soil_0_30cm_shp$meanNDVI2017test, soil_0_30cm_shp$NDVI_2017mean_1m)
-#plot(Mar2017_terrain_3m_cropped$maxNDVI_2017)
 plot(Mar2017_terrain_3m_cropped$meanNDVI_2017)
 plot(soil_0_30cm_shp, add=TRUE)
 terrain_features_3m_df <- as.data.frame(Mar2017_terrain_3m_cropped)
@@ -619,26 +617,22 @@ all_forage_sp$Mar2018growth <- all_forage_sp$clp032218 - all_forage_sp$clp021518
 all_forage_sp$Apr2018growth <- all_forage_sp$clp041518 - all_forage_sp$clp032218
 all_forage_sp$meanNDVI_2017 <- extract(meanNDVI_2017, all_forage_sp, buffer=1, fun=mean)
 all_forage_sp$maxNDVI_2017 <- extract(maxNDVI_2017, all_forage_sp, buffer=1, fun=mean)
+all_forage_sp$NDVI_02152017 <- extract(NDVI_2017$Camatta_02152017_NDVI, all_forage_sp, buffer=1, fun=mean)
+all_forage_sp$NDVI_03172017 <- extract(NDVI_2017$Camatta_03172017_NDVI, all_forage_sp, buffer=1, fun=mean)
+all_forage_sp$NDVI_04062017 <- extract(NDVI_2017$Camatta_04062017_NDVI, all_forage_sp, buffer=1, fun=mean)
+#all_forage_sp$clp031417
+summary(lm(clp021517 ~ NDVI_02152017, data=all_forage_sp))
+summary(lm(clp031417 ~ NDVI_03172017, data=all_forage_sp)) #r2=0.09
+summary(lm(clp041017 ~ NDVI_04062017, data=all_forage_sp)) #r2=0.16
 summary(lm(peak_2017 ~ meanNDVI_2017, data=all_forage_sp)) #r2=0.31
 summary(lm(peak_2017 ~ maxNDVI_2017, data=all_forage_sp)) #r2=0.19
-# distance_matrix <- as.data.frame(pointDistance(coordinates(all_forage_sp)[,1:2], coordinates(soil_0_30cm_shp)[,1:2], lonlat = FALSE))
-# colnames(distance_matrix) <- paste('pt_', soil_0_30cm_shp$point_no)
-# distance_matrix <- cbind(clip_plot=all_forage_sp$location, distance_matrix)
-# class(distance_matrix)
-# dim(distance_matrix)
-# head(distance_matrix)
-# write.csv(distance_matrix, file.path(soilCresults, 'distance_matrix', 'distance_matrix_clip_plots2017.csv'), row.names = FALSE)
-# distance_matrix <- read.csv(file.path(soilCresults, 'distance_matrix', 'distance_matrix_clip_plots2017.csv'), stringsAsFactors = FALSE)
-# pts_prox <- data.frame(pts_less_than=apply(distance_matrix[,2:ncol(distance_matrix)], 1, function(x) sum(x < 20)))
-# pts_prox$location <- distance_matrix$clip_plot
-# pts_prox[pts_prox == 0,]
 
 #plot soil C as interpolated map
 #see labs 14 and 15 from Quant Geo for tips
 #also http://rspatial.org/analysis/rst/4-interpolation.html is more refined source of information
 
 #first look at associations
-lapply(as.data.frame(soil_0_30cm_shp[,c('elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'clay_wtd', 'WMPD_mm')]), function(x) plot(x, soil_0_30cm_shp$kgOrgC.m2))
+lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), function(x) plot(x, soil_0_30cm_shp$kgOrgC.m2))
 rank_test <- function(x, df, y, mtd) {
   test <- cor.test(x, df[[y]], method = mtd)
   result <- data.frame(col.1=test$p.value, col.2=test$estimate)
@@ -662,30 +656,16 @@ NIR_GS_2018_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgO
 predictor_corrs <- cbind(orgC_corrs, clay_corrs, IC_corrs, P_corrs, elevation_corrs, curvmean_corrs, solrad_corrs, slope_corrs, NDVI_2017_corrs, NDVI_2018_corrs, Red_GS_2017_corrs, Red_GS_2018_corrs, NIR_GS_2017_corrs, NIR_GS_2018_corrs)
 write.csv(predictor_corrs, file.path(CarbonDir, 'correlations', 'terrain_soil_corrs_0_30cm.csv'), row.names=TRUE)
 
-#test some models
-summary(lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + clay_wtd, data =  soil_0_30cm_shp)) #r2=0.48
-summary(lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + CLAY, data =  soil_0_10cm_shp)) #r2=0.23
-summary(lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + CLAY, data =  soil_10_30cm_shp)) #r2=0.52
-summary(lm(kgOrgC.m2 ~ poly(curvature_mean, 2) + poly(slope, 2) + poly(annual_kwh.m2, 2) + poly(clay_wtd, 2), data =  soil_0_30cm_shp))
-summary(lm(kgOrgC.m2 ~ kgTN.m2, data = soil_0_30cm_shp)) #highly correlated: r^2=0.82
-summary(lm(kgTN.m2 ~ curvature_mean + slope + annual_kwh.m2 + clay_wtd, data =  soil_0_30cm_shp))
-summary(lm(kgOrgC.m2 ~ gP.m2, data = soil_0_30cm_shp)) #not clearly correlated
-plot(lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + clay_wtd, data =  soil_0_30cm_shp))
-lm_terrain3_clay_orgC <- lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + clay_wtd, data =  soil_0_30cm_shp)
-
-#interaction models
-summary(lm(kgOrgC.m2 ~ curvature_mean * clay_wtd, data = soil_0_30cm_shp))
-summary(lm(kgOrgC.m2 ~ curvature_mean + clay_wtd, data = soil_0_30cm_shp))
-summary(lm(kgOrgC.m2 ~ curvature_mean * elevation + annual_kwh.m2, data = soil_0_30cm_shp))
-summary(lm(kgOrgC.m2 ~ curvature_mean * slope + annual_kwh.m2 + elevation, data = soil_0_30cm_shp))
-summary(lm(kgOrgC.m2 ~ curvature_mean * slope + annual_kwh.m2 + elevation + NDVI_2017max_1m, data = soil_0_30cm_shp))
-
 #create summary stats for 105 pts
 sum(soil_0_10cm_shp$point_no - soil_10_30cm_shp$point_no) #check again that location order is the same in each dataset
 sum(soil_0_10cm_shp$point_no - soil_0_30cm_shp$point_no)
-soil_0_30cm_shp$orgC.percent <- soil_0_10cm_shp$orgC.percent * 1/3 + soil_10_30cm_shp$orgC.percent * 2/3
-soil_0_30cm_shp$bulk_density_g_cm3 <- soil_0_10cm_shp$bulk_density_g_cm3 * 1/3 + soil_10_30cm_shp$bulk_density_g_cm3 * 2/3
-soil_0_30cm_shp$PH <- soil_0_10cm_shp$PH * 1/3 + soil_10_30cm_shp$PH * 2/3
+soil_0_30cm_shp$orgC.percent <- soil_0_10cm_shp$orgC.percent * (soil_0_10cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD)) + soil_10_30cm_shp$orgC.percent * (soil_10_30cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD))
+soil_0_30cm_shp$bulk_density_g_cm3 <- soil_0_10cm_shp$bulk_density_g_cm3 * (soil_0_10cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD)) + soil_10_30cm_shp$bulk_density_g_cm3 * (soil_10_30cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD))
+soil_0_30cm_shp$PH <- soil_0_10cm_shp$PH * (soil_0_10cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD)) + soil_10_30cm_shp$PH * (soil_10_30cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD))
+#fix textural weighting scheme
+soil_0_30cm_shp$sand_wtd <- soil_0_10cm_shp$SAND * (soil_0_10cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD)) + soil_10_30cm_shp$SAND * (soil_10_30cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD))
+soil_0_30cm_shp$silt_wtd <- soil_0_10cm_shp$SILT * (soil_0_10cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD)) + soil_10_30cm_shp$SILT * (soil_10_30cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD))
+soil_0_30cm_shp$clay_wtd <- soil_0_10cm_shp$CLAY * (soil_0_10cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD)) + soil_10_30cm_shp$CLAY * (soil_10_30cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD))
 summary_stats_0_30cm <- as.data.frame(lapply(as.data.frame(soil_0_30cm_shp)[,c('orgC.percent', 'kgOrgC.m2', 'kgIC.m2', 'kgTC.m2', 'kgTN.m2', 'clay_wtd', 'sand_wtd', 'silt_wtd', 'gP.m2', 'bulk_density_g_cm3', 'PH', 'elevation', 'slope', 'annual_kwh.m2', 'curvature_mean', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m')], function(x) c(as.numeric(summary(x)), sd(x))))
 summary_stats_0_30cm$stat <- c('min', 'Q1', 'median', 'mean', 'Q3', 'max', 'sd')
 summary_stats_0_30cm <- summary_stats_0_30cm[,c(ncol(summary_stats_0_30cm), 1:(ncol(summary_stats_0_30cm)-1))]
@@ -807,24 +787,10 @@ summary(lm(kgOrgC.m2 ~ NDVI_2018max_1m, data = soil_0_30cm_shp)) #r^2<0.01 p-val
 summary(lm(kgOrgC.m2 ~ NDVI_2018max_1m, data = soil_0_10cm_shp)) #r2 < 0.01 p-val=0.34
 summary(lm(kgOrgC.m2 ~ NDVI_2018max_1m, data = soil_10_30cm_shp)) #r2 < 0.01 p-val=0.97
 
-
-#lmterrain3+clay model
-tiff(file = file.path(FiguresDir, 'lm_terrain3_clay_vs_orgC_0_30cm.tif', sep = ''), family = 'Times New Roman', width = 3.5, height = 3.5, pointsize = 11, units = 'in', res=150)
-par(mar=c(4.5, 4.5, 1, 1))
-plot(lm_terrain3_clay_orgC$fitted.values, soil_0_30cm_shp$kgOrgC.m2, xlab='', ylab=expression(paste('soil organic carbon (kg', ' ', m^-2, ')')), pch=21, cex.axis=1, cex.lab=1) #col=soil_0_30cm_shp$energy_colors, ylim = c(300, 1600), xlim=c(1400, 4700)
-abline(0, 1, lty=2)
-mtext(text=expression(paste('multiple linear regression fitted values (kg org C ', m^-2, ')')), side=1, line=2.5, at=3.3)
-text(x=2.2, y=5.62, labels=expression(paste(r^2, '= 0.48')), adj=c(0, 0))
-text(x=2.2, y=5.35, labels=paste('mult. linear reg. model:'), adj=c(0, 0))
-text(x=2.2, y=5.05, labels=paste('SOC = mean curv. + aspect'), adj=c(0, 0))
-text(x=2.8, y=4.75, labels=paste('+ slope + clay'), adj=c(0, 0))
-text(x=2.2, y=4.45, labels='p-val < 0.001', adj=c(0, 0))
-dev.off()
-summary(lm_terrain3_clay_orgC)
 #first calculate NULL cross-validated model
 #simplest approach to calculate null RMSE
 null <- RMSE(soil_0_30cm_shp$kgOrgC.m2, mean(soil_0_30cm_shp$kgOrgC.m2))
-null #0.706
+null #0.698
 #k-fold approach to calculate null RMSE
 #k <- 2
 #df_pts <- soil_0_30cm_shp
@@ -842,7 +808,7 @@ crossval_null <- function(df_pts, varname) {
   list(rmse.kfold=rmse, oob.predictions=predictions)
 }
 orgC_0_30_rmse_null <- crossval_null(soil_0_30cm_shp, 'kgOrgC.m2')
-mean(orgC_0_30_rmse_null$rmse.kfold) #0.671
+mean(orgC_0_30_rmse_null$rmse.kfold) #0.6
 orgC_0_10_rmse_null <- crossval_null(soil_0_10cm_shp, 'kgOrgC.m2')
 mean(orgC_0_10_rmse_null$rmse.kfold) #0.472
 orgC_10_30_rmse_null <- crossval_null(soil_10_30cm_shp, 'kgOrgC.m2')
@@ -856,11 +822,11 @@ clay_10_30_rmse_null <- crossval_null(soil_10_30cm_shp, 'CLAY')
 mean(clay_10_30_rmse_null$rmse.kfold) #5.4% clay
 
 WMPD_0_30_rmse_null <- crossval_null(soil_0_30cm_shp, 'WMPD_mm')
-mean(WMPD_0_30_rmse_null) #0.118 mm
+mean(WMPD_0_30_rmse_null$rmse.kfold) #0.118 mm
 WMPD_0_10_rmse_null <- crossval_null(soil_0_10cm_shp, 'WMPD_mm')
-mean(WMPD_0_10_rmse_null) #0.110 mm
+mean(WMPD_0_10_rmse_null$rmse.kfold) #0.110 mm
 WMPD_10_30_rmse_null <- crossval_null(soil_10_30cm_shp, 'WMPD_mm')
-mean(WMPD_10_30_rmse_null) #0.129 mm
+mean(WMPD_10_30_rmse_null$rmse.kfold) #0.129 mm
 
 IC_0_30_rmse_null <- crossval_null(soil_0_30cm_shp, 'kgIC.m2')
 mean(IC_0_30_rmse_null$rmse.kfold) #1.15 kg IC m2
@@ -876,62 +842,46 @@ mean(soilP_0_10_rmse_null$rmse.kfold) #0.67 g soilP m2
 soilP_10_30_rmse_null <- crossval_null(soil_10_30cm_shp, 'gP.m2')
 mean(soilP_10_30_rmse_null$rmse.kfold) #0.479 g P soilP m2
 
-#multiple linear regression CV test and final map
-summary(lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + elevation, data =  soil_0_30cm_shp))
-summary(lm(kgOrgC.m2 ~ curvature_mean + slope + aspect_class + elevation, data =  soil_0_30cm_shp))
-summary(lm(kgOrgC.m2 ~ curvature_mean + annual_kwh.m2 + slope + clay_wtd, data =  soil_0_30cm_shp))
-summary(lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + elevation, data =  soil_0_10cm_shp))
-summary(lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + elevation, data =  soil_10_30cm_shp))
-
-#mixed effects test
-#linear mixed effects ET vs. P
-#doesn't work for some reason
-library(nlme)
-soil_0_30cm_shp$aspect_class <- as.factor(soil_0_30cm_shp$aspect_class)
-table(soil_0_30cm_shp$aspect_class)
-lme_orgC_0_30cm <- lme(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + elevation, random = ~1 | aspect_class, data =  as.data.frame(soil_0_30cm_shp[!soil_0_30cm_shp$aspect_class=='east',]))
-summary(lme_1)
-plot(lme_1$residuals ~ lme_1$fitted)
-
 #map organic carbon 0-30 cm
-#4 var model
-lm_terrain4_0_30cm <- lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + elevation, data =  soil_0_30cm_shp)
-kgOrgC.m2_terrain4_0_30cm <- predict(Mar2017_terrain_3m, lm_terrain4_0_30cm)#, filename=file.path(FiguresDir, 'kgOrgC.m2_terrain4_0_30cm.tif'))
+#5 var model
+lm_terrain5_0_30cm <- lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + elevation + NDVI_2017mean_1m, data =  soil_0_30cm_shp)
+kgOrgC.m2_terrain5_0_30cm <- predict(Mar2017_terrain_3m_cropped, lm_terrain5_0_30cm, filename=file.path(FiguresDir, 'kgOrgC_m2_MLRbest5var_0_30cm.tif'))
 
 
-plot(kgOrgC.m2_terrain4_0_30cm)
-soil_0_30cm_shp$kgOrgC.m2_lm.terrain4 <- extract(kgOrgC.m2_terrain4_0_30cm, soil_0_30cm_shp)
-all_forage_sp$kgOrgC.m2_lm.terrain4 <- extract(kgOrgC.m2_terrain4_0_30cm, all_forage_sp)
-summary(lm(peak_2017 ~ kgOrgC.m2_lm.terrain4, data = all_forage_sp))
-summary(lm(peak_2018 ~ kgOrgC.m2_lm.terrain4, data = all_forage_sp))
-summary(lm(Mar2017growth ~ kgOrgC.m2_lm.terrain4, data = all_forage_sp))
-summary(lm(Apr2017growth ~ kgOrgC.m2_lm.terrain4, data = all_forage_sp))
-summary(lm(May2017growth ~ kgOrgC.m2_lm.terrain4, data = all_forage_sp))
-summary(lm(Mar2018growth ~ kgOrgC.m2_lm.terrain4, data = all_forage_sp))
-summary(lm(Apr2018growth ~ kgOrgC.m2_lm.terrain4, data = all_forage_sp))
+plot(kgOrgC.m2_terrain5_0_30cm)
+soil_0_30cm_shp$kgOrgC.m2_lm.terrain5 <- extract(kgOrgC.m2_terrain5_0_30cm, soil_0_30cm_shp)
+all_forage_sp$kgOrgC.m2_lm.terrain5 <- extract(kgOrgC.m2_terrain5_0_30cm, all_forage_sp)
+summary(lm(peak_2017 ~ kgOrgC.m2_lm.terrain5, data = all_forage_sp)) #r2=0.21
+summary(lm(peak_2018 ~ kgOrgC.m2_lm.terrain5, data = all_forage_sp)) #r2=0.22
+summary(lm(Mar2017growth ~ kgOrgC.m2_lm.terrain5, data = all_forage_sp))
+summary(lm(Apr2017growth ~ kgOrgC.m2_lm.terrain5, data = all_forage_sp))
+summary(lm(May2017growth ~ kgOrgC.m2_lm.terrain5, data = all_forage_sp))
+summary(lm(Mar2018growth ~ kgOrgC.m2_lm.terrain5, data = all_forage_sp))
+summary(lm(Apr2018growth ~ kgOrgC.m2_lm.terrain5, data = all_forage_sp))
 
-tiff(file = file.path(FiguresDir, 'peak2017_vs_orgC_0_30cm_lmterrain4.tif', sep = ''), family = 'Times New Roman', width = 3.5, height = 3.5, pointsize = 11, units = 'in', res=150)
+#peak 2017 forage vs. modeled SOC
+tiff(file = file.path(FiguresDir, 'peak2017_vs_orgC_0_30cm_MLRbest5var.tif', sep = ''), family = 'Times New Roman', width = 3.25, height = 3.3, pointsize = 11, units = 'in', res=150)
 par(mar=c(4.5, 4.5, 1, 1))
-plot(all_forage_sp$kgOrgC.m2_lm.terrain4, all_forage_sp$peak_2017, xlab=expression(paste('estimated soil organic carbon (kg ', ~m^-2, ')')), ylab=expression(paste('peak forage 2017 (kg ', ~ha^-1, ')')))
-abline(lm(peak_2017 ~ kgOrgC.m2_lm.terrain4, data = all_forage_sp), lty=2)
-text(4.5, 2000, label=expression(paste(r^2, '= 0.16')))
-text(4.5, 1600, label='p-val = 0.02')
+plot(all_forage_sp$kgOrgC.m2_lm.terrain5, all_forage_sp$peak_2017, xlab=expression(paste('modeled SOC (kg ', ~m^-2, ')')), ylab=expression(paste('peak forage 2017 (kg ', ~ha^-1, ')')))
+abline(lm(peak_2017 ~ kgOrgC.m2_lm.terrain5, data = all_forage_sp), lty=2)
+text(3.6, 1400, label=expression(paste(r^2, '= 0.21')), adj=c(0,0))
+text(3.6, 1100, label='p-val = 0.007', adj=c(0,0))
 dev.off()
-summary(lm(peak_2018 ~ kgOrgC.m2_lm.terrain4, data = all_forage_sp))
-tiff(file = file.path(FiguresDir, 'peak2018_vs_orgC_0_30cm_lmterrain4.tif', sep = ''), family = 'Times New Roman', width = 3.5, height = 3.5, pointsize = 11, units = 'in', res=150)
-par(mar=c(4.5, 4.5, 1, 1))
-plot(all_forage_sp$kgOrgC.m2_lm.terrain4, all_forage_sp$peak_2018, xlab=expression(paste('estimated soil organic carbon (kg ', ~m^-2, ')')), ylab=expression(paste('peak forage 2018 (kg ', ~ha^-1, ')')))
-abline(lm(peak_2018 ~ kgOrgC.m2_lm.terrain4, data = all_forage_sp), lty=2)
-text(4.5, 700, label=expression(paste(r^2, '= 0.11')))
-text(4.5, 600, label='p-val = 0.22')
-dev.off()
+summary(lm(peak_2017 ~ kgOrgC.m2_lm.terrain5, data = all_forage_sp))
 
-summary(lm(forage_terrain_energy$peak2017 ~ predict(lm_terrain4_0_30cm, forage_terrain_energy)))
+#peak 2018 vs SOC
+tiff(file = file.path(FiguresDir, 'peak2018_vs_orgC_0_30cm_MLRbest5var.tif', sep = ''), family = 'Times New Roman', width = 3.25, height = 3.3, pointsize = 11, units = 'in', res=150)
+par(mar=c(4.5, 4.5, 1, 1))
+plot(all_forage_sp$kgOrgC.m2_lm.terrain5, all_forage_sp$peak_2018, xlab=expression(paste('modeled SOC (kg ', ~m^-2, ')')), ylab=expression(paste('peak forage 2018 (kg ', ~ha^-1, ')')))
+abline(lm(peak_2018 ~ kgOrgC.m2_lm.terrain5, data = all_forage_sp), lty=2)
+text(2.75, 1100, label=expression(paste(r^2, '= 0.22')), adj=c(0,0))
+text(2.75, 1000, label='p-val = 0.06', adj=c(0.0))
+dev.off()
+summary(lm(peak_2018 ~ kgOrgC.m2_lm.terrain5, data = all_forage_sp))
 
 hist(soil_0_30cm_shp$kgOrgC.m2)
-hist(soil_0_30cm_shp$kgOrgC.m2_lm.terrain4)
-hist(soil_0_30cm_shp$kgOrgC.m2_lm.terrain3clay)
-quantile(kgOrgC.m2_terrain4_0_30cm, probs=c(0.25, 0.75)) 
+hist(soil_0_30cm_shp$kgOrgC.m2_lm.terrain5)
+quantile(kgOrgC.m2_terrain5_0_30cm, probs=c(0.25, 0.75)) 
 #25%  75% 
 #3.26 4.03
 quantile(kgOrgC.m2_terrain4_0_30cm, probs=c(0.33, 0.66))
@@ -963,15 +913,13 @@ plot(variogramLine(fve, 150), type='l', main='% clay semivariance')
 points(v[,2:3], pch=20, col='red')
 gs <- gstat(formula=clay_wtd ~ 1, locations=soil_0_30cm_shp, model=fve) #used model created above
 claywtd_0_30cm_ordkrig <- predict(gs, as(r, 'SpatialGrid'))
-test <- predict(r, gs)
+#test <- predict(r, gs)
 claywtd_0_30cm_ordkrig <- brick(claywtd_0_30cm_ordkrig)
-writeRaster(claywtd_0_30cm_ordkrig$var1.pred, filename = file.path(FiguresDir, 'claywtd_0_30cm_ordkrig.tif'))
+writeRaster(claywtd_0_30cm_ordkrig$var1.pred, filename = file.path(FiguresDir, 'claywtd_0_30cm_ordkrig.tif'), overwrite=TRUE)
 plot(claywtd_0_30cm_ordkrig$var1.pred)
 soil_0_30cm_shp$clay_wtd_ordkrig <- predict(gs, soil_0_30cm_shp)$var1.pred
 plot(soil_0_30cm_shp$clay_wtd_ordkrig, soil_0_30cm_shp$clay_wtd)
-Mar2017_terrain_3m_cropped <- crop(Mar2017_terrain_3m, claywtd_0_30cm_ordkrig)
-claywtd_0_30cm_ordkrig <- crop(claywtd_0_30cm_ordkrig, Mar2017_terrain_3m_cropped)
-Mar2017_terrain_3m_cropped$clay_wtd <-  resample(claywtd_0_30cm_ordkrig$var1.pred, Mar2017_terrain_3m_cropped)
+Mar2017_terrain_3m_cropped$clay_wtd_ordkrig <- claywtd_0_30cm_ordkrig$var1.pred
 plot(Mar2017_terrain_3m_cropped$clay_wtd_ordkrig)
 lm_terrain3_clay_0_30cm <- lm(kgOrgC.m2 ~ curvature_mean + annual_kwh.m2 + slope + clay_wtd, data =  soil_0_30cm_shp)
 Mar2017_terrain_3m_cropped$kgOrgC.m2_lmterrain3clay <- predict(Mar2017_terrain_3m_cropped, lm_terrain3_clay_0_30cm)
@@ -981,7 +929,7 @@ soil_0_30cm_shp$kgOrgC.m2_lm.terrain3clay <- extract(Mar2017_terrain_3m_cropped$
 plot(all_forage_sp$kgOrgC.m2_lmterrain3clay, all_forage_sp$peak_2017)
 summary(lm(peak_2017 ~ kgOrgC.m2_lmterrain3clay, data = all_forage_sp))
 summary(lm(peak_2018 ~ kgOrgC.m2_lmterrain3clay, data = all_forage_sp))
-writeRaster(Mar2017_terrain_3m_cropped$kgOrgC.m2_lmterrain3clay, filename = file.path(FiguresDir, 'kgOrgC_lm.terrain3clay_0.30cm.tif'))
+#writeRaster(Mar2017_terrain_3m_cropped$kgOrgC.m2_lmterrain3clay, filename = file.path(FiguresDir, 'kgOrgC_lm.terrain3clay_0.30cm.tif'))
 summary(lm(soil_0_30cm_shp$kgOrgC.m2 ~ soil_0_30cm_shp$kgOrgC.m2_lm.terrain3clay))
 
 crossval_lm <- function(df_pts, varname, model='~ curvature_mean + slope + annual_kwh.m2 + elevation') {
@@ -996,15 +944,19 @@ crossval_lm <- function(df_pts, varname, model='~ curvature_mean + slope + annua
     rmse[k] <- RMSE(tst[[varname]], varname_tst_pred)
     predictions[kf == k] <- varname_tst_pred
   }
-  print(summary(lm(df_pts[[varname]] ~ predictions)))
+  #print(summary(lm(df_pts[[varname]] ~ predictions)))
   list(rmse.kfold=rmse, oob.predictions=predictions)
 }
+
 orgC_0_30_rmse_lm <- crossval_lm(soil_0_30cm_shp, 'kgOrgC.m2')
 mean(orgC_0_30_rmse_lm$rmse.kfold) #0.526 kg orgC m2 full model; r^2=0.37 oob; 0.592 with only curv & elev; 0.588 with curv, elev, & slope
+orgC_0_30_rmse_lm4var <- crossval_lm(soil_0_30cm_shp, 'kgOrgC.m2', model = '~  curvature_mean + annual_kwh.m2 + elevation + NDVI_2017mean_1m')
+mean(orgC_0_30_rmse_lm4var$rmse.kfold) #0.497
+
 orgC_0_30_rmse_lm5var <- crossval_lm(soil_0_30cm_shp, 'kgOrgC.m2', model = '~  curvature_mean + annual_kwh.m2 + slope + elevation + NDVI_2017mean_1m') # + Red_May2017 + NDVI_2017max_1m + r^2=0.41; rmse=0.500 with NDVI max -or- r^2=0.44; rmse=0.49 with Red_May2017 (much worse with Red_Nov2016); -or- r2=0.44 rmse=0.481
 mean(orgC_0_30_rmse_lm5var$rmse.kfold) #0.478
 
-orgC_0_30_rmse_lm6var <- crossval_lm(soil_0_30cm_shp, 'kgOrgC.m2', model = '~ NDVI_2017mean_1m + curvature_mean + annual_kwh.m2 + slope + elevation + Red_May2017') #r^2=0.44 with NDVI and Red_May2017; NDVI_2017max_1m
+orgC_0_30_rmse_lm6var <- crossval_lm(soil_0_30cm_shp, 'kgOrgC.m2', model = '~ NDVI_2017mean_1m + curvature_mean + annual_kwh.m2 + slope + elevation + NIR_meanGS2018') #r^2=0.44 with NDVI and Red_May2017; NDVI_2017max_1m
 mean(orgC_0_30_rmse_lm6var$rmse.kfold) #0.481
 orgC_0_30_rmse_lm7var <- crossval_lm(soil_0_30cm_shp, 'kgOrgC.m2', model = '~ NDVI_2017mean_1m + curvature_mean + annual_kwh.m2 + slope + elevation + NIR_May2017 + Red_May2017') #r^2=0.44
 mean(orgC_0_30_rmse_lm7var$rmse.kfold)  #0.487
@@ -1100,6 +1052,88 @@ t.test(x=orgC_0_30_rmse_lm_clay$rmse.kfold, y=orgC_0_30_rmse_lm$rmse.kfold, alte
 # mean(rmse) #0.4994609 only very slight improvement if inorganic carbon or elevation included
 # summary(lm(soil_0_30cm_shp$kgOrgC.m2 ~ predictions)) #r2=0.43
 
+#model selection approach
+model_selection_MLR <- function(df, varname, depth, varDir) {
+  if(!dir.exists(file.path(modelResults, 'MLR_model_selection', varDir))) {
+    dir.create(file.path(modelResults, 'MLR_model_selection', varDir))
+  }
+  models_to_test <- expand.grid(elevation=c(TRUE, FALSE), slope=c(TRUE, FALSE), annual_kwh.m2=c(TRUE, FALSE), curvature_mean=c(TRUE, FALSE), NDVI_2017mean_1m=c(TRUE, FALSE), NDVI_2018mean_1m=c(TRUE, FALSE), NIR_meanGS2017=c(TRUE, FALSE), NIR_meanGS2018=c(TRUE, FALSE))
+  models_to_test <- models_to_test[1:(nrow(models_to_test)-1), ]
+  model_selection_results <- list(length=nrow(models_to_test))
+  #print(length(model_selection_results[1]))
+  for (i in 1:nrow(models_to_test)) {
+    print(i)
+    model_to_test <- paste(colnames(models_to_test)[unlist(models_to_test[i,])], collapse = ' + ')
+    model_selection_results[[i]] <- crossval_lm(df, varname, model = paste('~ ', model_to_test))
+    print(mean(model_selection_results[[i]]$rmse.kfold))
+  }
+  mean_RMSEs <- unlist(lapply(model_selection_results, function(x) mean(x$rmse.kfold)))
+  mean_RMSEs_all <- do.call(cbind, lapply(model_selection_results, function(x) x$rmse.kfold))
+  oob_predictions_all <- do.call(cbind, lapply(model_selection_results, function(x) x$oob.predictions))
+  #make summary
+  df_model <- apply(models_to_test, 1, sum)
+  meanRMSEs <- apply(mean_RMSEs_all, 2, mean)
+  oob_r2s <- apply(oob_predictions_all, 2, function(x) summary(lm(df[[varname]] ~ x))$r.squared)
+  summary <- data.frame(model=apply(models_to_test, 1, function(x) paste(colnames(models_to_test)[x], collapse = ' + ')), meanRMSE=meanRMSEs, oob_r.squared=oob_r2s, df_model=df_model)
+  summary_by_model_df <- split(summary, summary$df_model)
+  best_models <- unlist(lapply(summary_by_model_df, function(x) as.character(x$model[which.min(x$meanRMSE)])))
+  best_rmses <- unlist(lapply(summary_by_model_df, function(x) min(x$meanRMSE)))
+  best_oobs_r2 <- unlist(lapply(summary_by_model_df, function(x) x$oob_r.squared[which.min(x$meanRMSE)]))
+  final_summary <- data.frame(model_df=1:8, model_name=best_models, meanRMSE_20foldCV=best_rmses, OOB_r2=best_oobs_r2)
+  write.csv(mean_RMSEs_all, file.path(modelResults, 'MLR_model_selection', varDir, paste(varname, '_', depth, '_MLR_8var_selection_CV_RMSEs.csv')), row.names = FALSE)
+  write.csv(oob_predictions_all, file.path(modelResults, 'MLR_model_selection', varDir, paste(varname, '_', depth, '_MLR_8var_selection_oob_pred.csv')), row.names = FALSE)
+  write.csv(models_to_test, file.path(modelResults, 'MLR_model_selection', varDir, paste(varname, '_', depth, '_MLR_8var_selection_model_test_grid.csv')), row.names = FALSE)
+  write.csv(final_summary, file.path(modelResults, 'MLR_model_selection', varDir, paste(varname, '_', depth, '_MLR_8var_selection_BEST_models.csv')), row.names = FALSE)
+  list(RMSEs=mean_RMSEs_all, OOBs=oob_predictions_all, test_grid=models_to_test, best_models=final_summary)
+}
+#SOC content
+orgC_0_30_MLR8var <- model_selection_MLR(soil_0_30cm_shp, 'kgOrgC.m2', '0_30cm', 'SOC')
+orgC_0_30_MLR8var$best_models
+orgC_0_10_MLR8var <- model_selection_MLR(soil_0_10cm_shp, 'kgOrgC.m2', '0_10cm', 'SOC')
+orgC_0_10_MLR8var$best_models
+orgC_10_30_MLR8var <- model_selection_MLR(soil_10_30cm_shp, 'kgOrgC.m2', '10_30cm', 'SOC')
+orgC_10_30_MLR8var$best_models
+
+#SOC percent
+orgCper_0_30_MLR8var <- model_selection_MLR(soil_0_30cm_shp, 'orgC.percent', '0_30cm', 'SOC_percent')
+orgCper_0_30_MLR8var$best_models
+orgCper_0_10_MLR8var <- model_selection_MLR(soil_0_10cm_shp, 'orgC.percent', '0_10cm', 'SOC_percent')
+orgCper_0_10_MLR8var$best_models
+orgCper_10_30_MLR8var <- model_selection_MLR(soil_10_30cm_shp, 'orgC.percent', '10_30cm', 'SOC_percent')
+orgCper_10_30_MLR8var$best_models
+
+#SIC
+SIC_0_30_MLR8var <- model_selection_MLR(soil_0_30cm_shp, 'kgIC.m2', '0_30cm', 'SIC')
+SIC_0_30_MLR8var$best_models
+SIC_0_10_MLR8var <- model_selection_MLR(soil_0_10cm_shp, 'kgIC.m2', '0_10cm', 'SIC')
+SIC_0_10_MLR8var$best_models
+SIC_10_30_MLR8var <- model_selection_MLR(soil_10_30cm_shp, 'kgIC.m2', '10_30cm', 'SIC')
+SIC_10_30_MLR8var$best_models
+
+#TC
+TC_0_30_MLR8var <- model_selection_MLR(soil_0_30cm_shp, 'kgTC.m2', '0_30cm', 'TC')
+TC_0_30_MLR8var$best_models
+TC_0_10_MLR8var <- model_selection_MLR(soil_0_10cm_shp, 'kgTC.m2', '0_10cm', 'TC')
+TC_0_10_MLR8var$best_models
+TC_10_30_MLR8var <- model_selection_MLR(soil_10_30cm_shp, 'kgTC.m2', '10_30cm', 'TC')
+TC_10_30_MLR8var$best_models
+
+#clay
+clay_0_30_MLR8var <- model_selection_MLR(soil_0_30cm_shp, 'clay_wtd', '0_30cm', 'clay')
+clay_0_30_MLR8var$best_models
+clay_0_10_MLR8var <- model_selection_MLR(soil_0_10cm_shp, 'CLAY', '0_10cm', 'clay')
+clay_0_10_MLR8var$best_models
+clay_10_30_MLR8var <- model_selection_MLR(soil_10_30cm_shp, 'CLAY', '10_30cm', 'clay')
+clay_10_30_MLR8var$best_models
+
+#Olsen P
+P_0_30_MLR8var <- model_selection_MLR(soil_0_30cm_shp, 'gP.m2', '0_30cm', 'P')
+P_0_30_MLR8var$best_models
+P_0_10_MLR8var <- model_selection_MLR(soil_0_10cm_shp, 'gP.m2', '0_10cm', 'P')
+P_0_10_MLR8var$best_models
+P_10_30_MLR8var <- model_selection_MLR(soil_10_30cm_shp, 'gP.m2', '10_30cm', 'P')
+P_10_30_MLR8var$best_models
+
 #inverse distance weighted model for 0-30 cm organic carbon
 library(gstat)
 orgC_nn <- gstat(formula=kgOrgC.m2~1, locations=soil_0_30cm_shp, maxdist = 35, set=list(idp = 0)) #nearest neighbors approach:  idp=0
@@ -1148,7 +1182,6 @@ for (k in 1:20) {
 }
 opt_results
 apply(opt_results, 2, mean)
-
 
 #cross-validate idw model
 predictions <- rep(NA, 105)
@@ -1375,8 +1408,6 @@ autocorr_test_soil <- function(df_shp, varname, nsim) {
   results
 }
 names(soil_0_10cm_shp)
-soilC_0_30_autocorr <- autocorr_test_soil(soil_0_30cm_shp, 'kgOrgC.m2', nsim = 999)
-soilC_0_30_autocorr
 #Monte-Carlo simulation of Moran I
 soil_0_30_autocorr <- do.call(rbind, lapply(c('orgC.percent', 'kgOrgC.m2', 'kgIC.m2', 'kgTC.m2', 'kgTN.m2', 'clay_wtd', 'sand_wtd', 'silt_wtd', 'gP.m2', 'bulk_density_g_cm3', 'PH'), function(x) autocorr_test_soil(soil_0_30cm_shp, varname = x, nsim = 999)))
 soil_0_30_autocorr
@@ -1579,7 +1610,7 @@ mean(soilP_10_30_rmse_regkrig$rmse.kfold) # 0.487 g P soilP m2; r^2=0
 #random forest test
 #best current lm model: kgOrgC.m2 ~ NDVI_2017max_1m + curvature_mean + annual_kwh.m2 + slope + elevation + Red_Nov2016 + Red_May2017 + NIR_May2017, data = soil_0_30cm_shp
 library(randomForest)
-tuneRF(x=as.data.frame(soil_0_30cm_shp)[,c('curvature_mean', 'slope', 'annual_kwh.m2', 'elevation', 'NDVI_2017max_1m', 'Red_Nov2016', 'Red_May2017', 'NIR_May2017')], soil_0_30cm_shp$kgOrgC.m2, ntreeTry = 100, stepFactor = 1, improve = 0.02)
+tuneRF(x=as.data.frame(soil_0_30cm_shp)[,c('curvature_mean', 'slope', 'annual_kwh.m2', 'elevation', 'NDVI_2017mean_1m')], soil_0_30cm_shp$kgOrgC.m2, ntreeTry = 100, stepFactor = 1, improve = 0.02)
 RF_kgOrgC_0_30cm <- randomForest(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + elevation, data = soil_0_30cm_shp, mtry=1) #Mean of squared residuals: 0.3649699
 hist(RF_kgOrgC_0_30cm$predicted)
 RF_kgOrgC_0_30cm_8var <- randomForest(kgOrgC.m2 ~ NDVI_2017max_1m + curvature_mean + annual_kwh.m2 + slope + elevation + Red_Nov2016 + Red_May2017 + NIR_May2017, data = soil_0_30cm_shp, mtry=2)
@@ -1607,7 +1638,8 @@ predictions <- rep(NA, 105)
 for (k in 1:20) {
   tst <- soil_0_30cm_shp[kf == k, ]
   trn <- soil_0_30cm_shp[kf != k, ]
-  RF_kgOrgC_0_30cm <- randomForest(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + clay_wtd, data = trn, mtry=2, ntree=100)
+  mtry_tuned <- tuneRF(x=as.data.frame(soil_0_30cm_shp)[,c('curvature_mean', 'slope', 'annual_kwh.m2', 'elevation', 'NDVI_2017mean_1m')], soil_0_30cm_shp$kgOrgC.m2, ntreeTry = 100, stepFactor = 1, improve = 0.02)[1]
+  RF_kgOrgC_0_30cm <- randomForest(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + NDVI_2017mean_1m, data = trn, mtry=mtry_tuned, ntree=100)
   #orgC_terrain_pred <- predict(Mar2017_terrain_3m, RF_kgOrgC_0_30cm, fun=predict)
   #orgC_tst_pred <- extract(orgC_terrain_pred, tst)
   orgC_tst_pred <- predict(RF_kgOrgC_0_30cm, tst)
@@ -1619,23 +1651,31 @@ summary(lm(soil_0_30cm_shp$kgOrgC.m2 ~ predictions)) #r2=0.36
 mean(rmse) #0.535269 with clay as predictor
 randomForest(CLAY ~ curvature_mean + slope + annual_kwh.m2 + elevation, data = soilC_0_10cm_df, mtry=1)
 
-#random forest CV function
-crossval_RF <- function(df_pts, varname, mtry=1, ntree=75) {
-  rmse <- rep(NA, 20)
+#random forest CV function[modify so that model selection algorithm can be applied]
+# df_pts <- soil_0_30cm_shp
+# varname <- 'kgOrgC.m2'
+# model <- "~ elevation + slope + annual_kwh.m2 + curvature_mean + NDVI_2017mean_1m + NDVI_2018mean_1m + NIR_meanGS2017 + NIR_meanGS2018"
+crossval_RF <- function(df_pts, varname, ntree=75, model='~ curvature_mean + slope + annual_kwh.m2 + elevation') { #varnames=c("curvature_mean", "slope", "annual_kwh.m2", "elevation")
+  rmse <- rep(NA, 20) 
   predictions <- rep(NA, 105)
   for (k in 1:20) {
     tst <- df_pts[kf == k, ]
     trn <- df_pts[kf != k, ]
-    RF_varname <- randomForest(as.formula(paste(varname, '~ curvature_mean + slope + annual_kwh.m2 + elevation')), data = trn, mtry=mtry, ntree=ntree) # + NDVI_2017max_1m' + NIR_May2017 + Red_May2017 + Red_Nov2016
+    model_vector <- gsub('[+]', '', model)
+    model_vector <- gsub('~ ', '', model_vector)
+    model_vector <- unlist(strsplit(model_vector, '  '))
+    mtry_tuned <- tuneRF(x=as.data.frame(df_pts)[ ,model_vector], df_pts[[varname]], ntreeTry = 100, stepFactor = 1, improve = 0.02, trace = FALSE)[1]
+    #print(mtry_tuned)
+    RF_varname <- randomForest(as.formula(paste(varname, model)), data = trn, mtry=mtry_tuned, ntree=ntree)
     varname_tst_pred <- predict(RF_varname, tst)
     rmse[k] <- RMSE(tst[[varname]], varname_tst_pred)
     predictions[kf == k] <- varname_tst_pred
-    plot(RF_varname)
+    #plot(RF_varname)
   }
-  print(summary(lm(df_pts[[varname]] ~ predictions)))
+  #print(summary(lm(df_pts[[varname]] ~ predictions)))
   list(rmse.kfold=rmse, oob.predictions=predictions)
 }
-orgC_0_30_rmse_RF <- crossval_RF(soil_0_30cm_shp, 'kgOrgC.m2')
+orgC_0_30_rmse_RF <- crossval_RF(soil_0_30cm_shp, 'kgOrgC.m2', model=model_to_test)
 mean(orgC_0_30_rmse_RF$rmse.kfold)
 plot(orgC_0_30_rmse_RF$oob.predictions, soil_0_30cm_shp$kgOrgC.m2)
 abline(0,1,lty=2)
@@ -1673,6 +1713,49 @@ mean(soilP_0_10_rmse_RF$rmse.kfold) #0.74 g soilP m2; r^2:0
 soilP_10_30_rmse_RF <- crossval_RF(soil_10_30cm_shp, 'gP.m2')
 mean(soilP_10_30_rmse_RF$rmse.kfold) #0.49 g P soilP m2; r^2=0
 
+#cross-validation for RF
+df <- soil_0_30cm_shp
+varname <- 'kgOrgC.m2'
+depth <- '0_30cm'
+varDir <- 'SOC'
+model_selection_RF <- function(df, varname, depth, varDir) {
+  if(!dir.exists(file.path(modelResults, 'RF_model_selection', varDir))) {
+    dir.create(file.path(modelResults, 'RF_model_selection', varDir))
+  }
+  models_to_test <- expand.grid(elevation=c(TRUE, FALSE), slope=c(TRUE, FALSE), annual_kwh.m2=c(TRUE, FALSE), curvature_mean=c(TRUE, FALSE), NDVI_2017mean_1m=c(TRUE, FALSE), NDVI_2018mean_1m=c(TRUE, FALSE), NIR_meanGS2017=c(TRUE, FALSE), NIR_meanGS2018=c(TRUE, FALSE))
+  models_to_test <- models_to_test[1:(nrow(models_to_test)-1), ]
+  df_sum <- apply(models_to_test, 1, sum)
+  models_to_test <- models_to_test[df_sum>1,]
+  model_selection_results <- list(length=nrow(models_to_test))
+  #print(length(model_selection_results[1]))
+  for (i in 1:nrow(models_to_test)) {
+    print(i)
+    model_to_test <- paste(colnames(models_to_test)[unlist(models_to_test[i,])], collapse = ' + ')
+    model_to_test <- paste('~', model_to_test)
+    model_selection_results[[i]] <- crossval_RF(df_pts = df, varname = varname, model = model_to_test)
+    print(mean(model_selection_results[[i]]$rmse.kfold))
+  }
+  mean_RMSEs <- unlist(lapply(model_selection_results, function(x) mean(x$rmse.kfold)))
+  mean_RMSEs_all <- do.call(cbind, lapply(model_selection_results, function(x) x$rmse.kfold))
+  oob_predictions_all <- do.call(cbind, lapply(model_selection_results, function(x) x$oob.predictions))
+  #make summary
+  df_model <- apply(models_to_test, 1, sum)
+  meanRMSEs <- apply(mean_RMSEs_all, 2, mean)
+  oob_r2s <- apply(oob_predictions_all, 2, function(x) summary(lm(df[[varname]] ~ x))$r.squared)
+  summary <- data.frame(model=apply(models_to_test, 1, function(x) paste(colnames(models_to_test)[x], collapse = ' + ')), meanRMSE=meanRMSEs, oob_r.squared=oob_r2s, df_model=df_model)
+  summary_by_model_df <- split(summary, summary$df_model)
+  best_models <- unlist(lapply(summary_by_model_df, function(x) as.character(x$model[which.min(x$meanRMSE)])))
+  best_rmses <- unlist(lapply(summary_by_model_df, function(x) min(x$meanRMSE)))
+  best_oobs_r2 <- unlist(lapply(summary_by_model_df, function(x) x$oob_r.squared[which.min(x$meanRMSE)]))
+  final_summary <- data.frame(model_df=2:8, model_name=best_models, meanRMSE_20foldCV=best_rmses, OOB_r2=best_oobs_r2) #because 1 var models were dropped above
+  write.csv(mean_RMSEs_all, file.path(modelResults, 'RF_model_selection', varDir, paste(varname, '_', depth, '_RF_8var_selection_CV_RMSEs.csv')), row.names = FALSE)
+  write.csv(oob_predictions_all, file.path(modelResults, 'RF_model_selection', varDir, paste(varname, '_', depth, '_RF_8var_selection_oob_pred.csv')), row.names = FALSE)
+  write.csv(models_to_test, file.path(modelResults, 'RF_model_selection', varDir, paste(varname, '_', depth, '_RF_8var_selection_model_test_grid.csv')), row.names = FALSE)
+  write.csv(final_summary, file.path(modelResults, 'RF_model_selection', varDir, paste(varname, '_', depth, '_RF_8var_selection_BEST_models.csv')), row.names = FALSE)
+  list(RMSEs=mean_RMSEs_all, OOBs=oob_predictions_all, test_grid=models_to_test, best_models=final_summary)
+}
+orgC_0_30_RF8var <- model_selection_RF(soil_0_30cm_shp, 'kgOrgC.m2', '0_30cm', 'SOC')
+orgC_0_30_RF8var
 
 #export model testing results to csvs
 #soil organic carbon results
