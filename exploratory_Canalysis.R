@@ -39,6 +39,61 @@ text(x=2.2, y=4.45, labels='p-val < 0.001', adj=c(0, 0))
 dev.off()
 summary(lm_terrain3_clay_orgC)
 
+crossval_lm_clay <- function(df_pts, varname) {
+  rmse <- rep(NA, 20)
+  predictions <- rep(NA, 105)
+  for (k in 1:20) {
+    tst <- df_pts[kf == k, ]
+    trn <- df_pts[kf != k, ]
+    varname_lm <- lm(as.formula(paste(varname, '~ curvature_mean + slope + annual_kwh.m2 + WMPD_mm')), data = trn)
+    print(summary(varname_lm))
+    varname_tst_pred <- predict.lm(varname_lm, tst)
+    rmse[k] <- RMSE(tst[[varname]], varname_tst_pred)
+    predictions[kf == k] <- varname_tst_pred
+  }
+  print(summary(lm(df_pts[[varname]] ~ predictions)))
+  list(rmse.kfold=rmse, oob.predictions=predictions)
+}
+orgC_0_30_rmse_lm_clay <- crossval_lm_clay(soil_0_30cm_shp, 'kgOrgC.m2') #r^2=0.41
+orgC_0_10_rmse_lm_clay <- crossval_lm_clay(soil_0_10cm_shp, 'kgOrgC.m2') #r^2=0.17 
+orgC_10_30_rmse_lm_clay <- crossval_lm_clay(soil_10_30cm_shp, 'kgOrgC.m2') #r^2=0.46
+mean(orgC_0_30_rmse_lm_clay$rmse.kfold) #0.5033317; r^2=0.41
+mean(orgC_10_30_rmse_lm_clay$rmse.kfold)
+t.test(x=orgC_0_30_rmse_lm_clay$rmse.kfold, y=orgC_0_30_rmse_null$rmse.kfold, alternative = 'less', paired = TRUE) #t = -3.9311, df = 19, p-value = 0.0004484
+t.test(x=orgC_0_30_rmse_lm_clay$rmse.kfold, y=orgC_0_30_rmse_lm$rmse.kfold, alternative = 'less', paired = TRUE) #t = -1.5417, df = 19, p-value = 0.06981
+
+
+#multiple linear regression CV test all vars
+# summary(lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + elevation + curvature_profile  + TCI, data = soil_0_30cm_shp))
+# rmse <- rep(NA, 20)
+# for (k in 1:20) {
+#   tst <- soil_0_30cm_shp[kf == k, ]
+#   trn <- soil_0_30cm_shp[kf != k, ]
+#   kgOrgC_0_30cm_lm <- lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + elevation + curvature_profile  + TCI, data = trn)
+#   orgC_tst_pred <- predict.lm(kgOrgC_0_30cm_lm, tst)
+#   rmse[k] <- RMSE(tst$kgOrgC.m2, orgC_tst_pred)
+# }
+# rmse
+# mean(rmse) #0.5418224
+
+# #test with clay as predictor
+# summary(lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + clay_wtd, data = soil_0_30cm_shp)) #r^2=0.48
+# summary(lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + clay_wtd + kgIC.m2, data = soil_0_30cm_shp)) #r^2=0.48
+# rmse <- rep(NA, 20)
+# predictions <- rep(NA, 105)
+# for (k in 1:20) {
+#   tst <- soil_0_30cm_shp[kf == k, ]
+#   trn <- soil_0_30cm_shp[kf != k, ]
+#   kgOrgC_0_30cm_lm <- lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + clay_wtd, data = trn)
+#   print(summary(kgOrgC_0_30cm_lm))
+#   orgC_tst_pred <- predict.lm(kgOrgC_0_30cm_lm, tst)
+#   rmse[k] <- RMSE(tst$kgOrgC.m2, orgC_tst_pred)
+#   predictions[kf==k] <- orgC_tst_pred
+# }
+# rmse
+# mean(rmse) #0.4994609 only very slight improvement if inorganic carbon or elevation included
+# summary(lm(soil_0_30cm_shp$kgOrgC.m2 ~ predictions)) #r2=0.43
+
 # distance_matrix <- as.data.frame(pointDistance(coordinates(all_forage_sp)[,1:2], coordinates(soil_0_30cm_shp)[,1:2], lonlat = FALSE))
 # colnames(distance_matrix) <- paste('pt_', soil_0_30cm_shp$point_no)
 # distance_matrix <- cbind(clip_plot=all_forage_sp$location, distance_matrix)
