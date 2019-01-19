@@ -479,8 +479,8 @@ soil_0_30cm_shp$NDVI_2017mean_1m_norm <- normalize_var(soil_0_30cm_shp$NDVI_2017
 # soil_0_30cm_shp$Red_meanGS2017_norm <- normalize_var(soil_0_30cm_shp$Red_meanGS2017)
 # soil_0_30cm_shp$Red_meanGS2017_norm
 
-summary(lm(kgOrgC.m2 ~ curvature_mean_norm + slope_norm + annual_kwh.m2_norm + elevation_norm + NDVI_2017mean_1m_norm, data =  soil_0_30cm_shp))
-plot(lm(kgOrgC.m2 ~ curvature_mean_norm + slope_norm + annual_kwh.m2_norm + elevation_norm + NDVI_2017meam_1m_norm, data =  soil_0_30cm_shp))
+summary(lm(kgOrgC.m2 ~ curvature_mean_norm + slope_norm + annual_kwh.m2_norm + elevation_norm + NDVI_2017mean_1m_norm, data =  soil_0_30cm_shp[-c(2,5,82),]))
+plot(lm(kgOrgC.m2 ~ curvature_mean_norm + slope_norm + annual_kwh.m2_norm + elevation_norm + NDVI_2017mean_1m_norm, data =  soil_0_30cm_shp[-c(2,5,82),]))
 
 Mar2017_terrain_3m_cropped <- crop(Mar2017_terrain_3m, r)
 #Mar2017_terrain_3m_cropped$maxNDVI_2017 <- resample(maxNDVI_2017, Mar2017_terrain_3m_cropped)
@@ -1441,52 +1441,7 @@ plot(all_forage_sp$orgC_est_regkrig, all_forage_sp$peak_2018)
 abline(lm(peak_2018 ~ orgC_est_regkrig, data = all_forage_sp), lty=2)
 summary(lm(peak_2018 ~ orgC_est_regkrig, data = all_forage_sp)) #r^2=0.17;p-val=0.11
 
-#cross-validate orgC regression krigging for 0-30 cm dataset
-#turned this into flexible function for multiple depths and varnames
-set.seed(20161203)
-library(dismo)
-kf <- kfold(soil_0_30cm_shp, k=20)
-table(kf)
-rmse <- rep(NA, 20)
-predictions <- rep(NA, 105)
-#kappa list example from autofitVariogram function: c(0.05, seq(0.2, 2, 0.1), 5, 10)
-#k <- 1
-for (k in 1:20) {
-  tst <- soil_0_30cm_shp[kf == k, ]
-  trn <- soil_0_30cm_shp[kf != k, ]
-  orgC_lm <- lm(kgOrgC.m2 ~ curvature_mean + elevation + slope + annual_kwh.m2, data=trn)
-  trn$residuals <- orgC_lm$residuals
-  #orgC_terrain_pred <- predict(Mar2017_terrain_3m, orgC_lm, fun=predict)
-  #orgC_tst_pred <- extract(orgC_terrain_pred, tst)
-  #print(summary(varname_lm))
-  orgC_tst_pred <- predict.lm(orgC_lm, tst)
-  soil_0_30cm_shp$kgOrgC.m2.oob.predictions[kf == k] <- orgC_tst_pred
-  orgC_reg_krig <- gstat(formula=residuals ~ 1, locations = trn)
-  v <- variogram(orgC_reg_krig)
-  test <- autofitVariogram(formula=residuals~1, input_data = trn, verbose = TRUE)
-  v <- variogram(orgC_reg_krig, boundaries=test$exp_var$dist + 10)
-  #fve <- fit.variogram(v, vgm(c("Exp", "Mat", "Sph", 'Gau', 'Lin', 'Bes', 'Log', 'Ste')), fit.kappa = seq(0.3,30,0.05))
-  fve <- autofitVariogram(formula=residuals~1, input_data = trn, verbose = TRUE, kappa=c(0.05, seq(0.1,5,0.1), seq(5, 250, 5)))
-  fve <- fit.variogram(v, vgm(psill=fve$var_model$psill[2], model=as.character(fve$var_model$model)[2], range=fve$var_model$range[2], nugget = fve$var_model$psill[1], kappa = fve$var_model$kappa[2]))
-  #fve <- fit.variogram(v, vgm(psill=0.3, model="Exp", range=50, nugget = 0.2, kappa = 10))
-  #fve <- fit.variogram(v, vgm(psill=0.3, model="Sph", range=50, nugget = 0.2))
-  regkrig_model <- gstat(formula=residuals ~ 1, locations = trn, model=fve)
-  p_res_correction <- predict(regkrig_model, tst)
-  p <- p_res_correction$var1.pred + orgC_tst_pred
-  rmse[k] <- RMSE(tst$kgOrgC.m2, p)
-  predictions[kf==k] <- p
-  print(fve)
-  plot(variogramLine(fve, 200), type='l', ylim=c(0,0.7), main=paste0(k, '-fold plot'))
-  points(v[,2:3], pch=20, col='red')
-}
-plot(predictions, soil_0_30cm_shp$kgOrgC.m2)
-summary(lm(soil_0_30cm_shp$kgOrgC.m2 ~ predictions)) #OOB prediction is r^2=0.36
-rmse #0.4939221 0.5600666 1.0633800 0.6527512 0.4721887 0.3774705 0.7145091 0.4467885 0.7634694 0.4930032 0.4282195 0.4026534 0.3921021 0.6156166 0.4385753 0.8660794 0.7585025 0.5583349 0.6681401 0.2705451
-mean(rmse) #0.5098548 using v <- variogram(orgC_reg_krig, width = 22) and fve <- fit.variogram(v, vgm(psill=0.3, model="Exp", range=50, nugget = 0.2)), best so far except for multiple linear regression
-#0.525458 using autofit function
-#0.5266747 using fit.variogram function that considers multiple models
-#turn this into function
-#0.523046 using 
+#alternative set-up is to uncomment lines labeled (a), (b), (c), and (d) and comment lines labeled (1) and (2)
 crossval_regkrig <- function(df_pts, varname, model='~ curvature_mean + elevation + slope + annual_kwh.m2') {
   rmse <- rep(NA, 20)
   predictions <- rep(NA, 105)
@@ -1499,12 +1454,12 @@ crossval_regkrig <- function(df_pts, varname, model='~ curvature_mean + elevatio
     # tst_pred <- extract(terrain_pred, tst)
     tst_pred <- predict.lm(varname_lm, tst)
     reg_krig <- gstat(formula=residuals ~ 1, locations = trn)
-    test <- autofitVariogram(formula=residuals~1, input_data = trn, verbose = TRUE)
-    #v <- variogram(reg_krig)
-    v <- variogram(reg_krig, boundaries=test$exp_var$dist + 10)
-    fve <- autofitVariogram(formula=residuals~1, input_data = trn, verbose = TRUE, kappa=c(0.05, seq(0.1,5,0.1), seq(5, 250, 5)))
-    fve <- fit.variogram(v, vgm(psill=fve$var_model$psill[2], model=as.character(fve$var_model$model)[2], range=fve$var_model$range[2], nugget = fve$var_model$psill[1], kappa = fve$var_model$kappa[2]))
-    #fve <- fit.variogram(v, vgm(c("Exp", "Mat", "Sph", 'Gau', 'Ste')), fit.kappa = c(0.05, seq(0.1,5,0.1), seq(5, 250, 5)))
+    test <- autofitVariogram(formula=residuals~1, input_data = trn, verbose = TRUE) # (a)
+    # v <- variogram(reg_krig) #(1)
+    v <- variogram(reg_krig, boundaries=test$exp_var$dist + 10) # (b)
+    fve <- autofitVariogram(formula=residuals~1, input_data = trn, verbose = TRUE, kappa=c(0.05, seq(0.1,5,0.1), seq(5, 250, 5))) #(c)
+    fve <- fit.variogram(v, vgm(psill=fve$var_model$psill[2], model=as.character(fve$var_model$model)[2], range=fve$var_model$range[2], nugget = fve$var_model$psill[1], kappa = fve$var_model$kappa[2])) #(d)
+    #fve <- fit.variogram(v, vgm(c("Exp", "Mat", "Sph", 'Gau', 'Ste')), fit.kappa = c(0.05, seq(0.1,5,0.1), seq(5, 250, 5))) #(2)
     #fve <- fit.variogram(v, vgm(psill=0.1, model="Sph", range=150, nugget = 0.2))
     regkrig_model <- gstat(formula=residuals ~ 1, locations = trn, model=fve)
     p_res_correction <- predict(regkrig_model, tst)
@@ -1525,15 +1480,18 @@ abline(0,1,lty=2)
 mean(orgC_0_30_rmse_regkrig$rmse.kfold) #rmse: 0.477; r^2:0.44 (same as MLR)
 orgC_0_10_rmse_regkrig <- crossval_regkrig(soil_0_10cm_shp, 'kgOrgC.m2', model = '~ elevation + slope + annual_kwh.m2 + curvature_mean + NDVI_2017mean_1m')
 mean(orgC_0_10_rmse_regkrig$rmse.kfold) #0.357; r^2=0.16
-orgC_10_30_rmse_regkrig <- crossval_regkrig(soil_10_30cm_shp, 'kgOrgC.m2', model=)
-mean(orgC_10_30_rmse_regkrig$rmse.kfold) #0.283; r^2=0.48
+orgC_10_30_rmse_regkrig <- crossval_regkrig(soil_10_30cm_shp, 'kgOrgC.m2', model='~ elevation + annual_kwh.m2 + curvature_mean + NDVI_2017mean_1m + NIR_meanGS2017')
+mean(orgC_10_30_rmse_regkrig$rmse.kfold) #0.268; r^2=0.52
+#all orgC regression krigging are the exact same as MLR results
 
-clay_0_30_rmse_regkrig <- crossval_regkrig(soil_0_30cm_shp, 'clay_wtd')
-mean(clay_0_30_rmse_regkrig$rmse.kfold) #rmse: 2.86; r^2:0.62
-clay_0_10_rmse_regkrig <- crossval_regkrig(soil_0_10cm_shp, 'CLAY')
-mean(clay_0_10_rmse_regkrig$rmse.kfold) #2.83% clay; r2=0.49
-clay_10_30_rmse_regkrig <- crossval_regkrig(soil_10_30cm_shp, 'CLAY')
-mean(clay_10_30_rmse_regkrig$rmse.kfold) #3.44% clay; r2=0.57
+
+clay_0_30_rmse_regkrig <- crossval_regkrig(soil_0_30cm_shp, 'clay_wtd', model='~ annual_kwh.m2 + NDVI_2017mean_1m + NDVI_2018mean_1m + NIR_meanGS2018')
+mean(clay_0_30_rmse_regkrig$rmse.kfold) #rmse: 3.22; r^2:0.51
+clay_0_10_rmse_regkrig <- crossval_regkrig(soil_0_10cm_shp, 'CLAY', model = "~ elevation + annual_kwh.m2 + NDVI_2017mean_1m + NDVI_2018mean_1m")
+mean(clay_0_10_rmse_regkrig$rmse.kfold) #3.07% clay; r2=???
+clay_10_30_rmse_regkrig <- crossval_regkrig(soil_10_30cm_shp, 'CLAY', model= '~ elevation + annual_kwh.m2 + NDVI_2017mean_1m + NDVI_2018mean_1m')
+mean(clay_10_30_rmse_regkrig$rmse.kfold) #3.75% clay; r2=0.49
+#all clay regression krigging performed worse than ordinary krigging but better than MLR
 
 # WMPD_0_30_rmse_regkrig <- crossval_regkrig(soil_0_30cm_shp, 'WMPD_mm')
 # mean(WMPD_0_30_rmse_regkrig$rmse.kfold) #0.05617986 mm; r^2=0.71
@@ -1542,12 +1500,12 @@ mean(clay_10_30_rmse_regkrig$rmse.kfold) #3.44% clay; r2=0.57
 # WMPD_10_30_rmse_regkrig <- crossval_regkrig(soil_10_30cm_shp, 'WMPD_mm')
 # mean(WMPD_10_30_rmse_regkrig$rmse.kfold) #0.06532887; r^2=0.66
 
-IC_0_30_rmse_regkrig <- crossval_regkrig(soil_0_30cm_shp, 'kgIC.m2')
-mean(IC_0_30_rmse_regkrig$rmse.kfold) #1.059 kg IC m2; r2=0.12
-IC_0_10_rmse_regkrig <- crossval_regkrig(soil_0_10cm_shp, 'kgIC.m2')
-mean(IC_0_10_rmse_regkrig$rmse.kfold) #0.332 kg IC m2; r2=0.13
-IC_10_30_rmse_regkrig <- crossval_regkrig(soil_10_30cm_shp, 'kgIC.m2')
-mean(IC_10_30_rmse_regkrig$rmse.kfold) #0.858 kg IC m2; r2=0.08
+IC_0_30_rmse_regkrig <- crossval_regkrig(soil_0_30cm_shp, 'kgIC.m2', model='~ elevation + annual_kwh.m2 + NDVI_2018mean_1m')
+mean(IC_0_30_rmse_regkrig$rmse.kfold) #1.03 kg IC m2; r2=0.15
+IC_0_10_rmse_regkrig <- crossval_regkrig(soil_0_10cm_shp, 'kgIC.m2', model='~ elevation + slope + NDVI_2018mean_1m')
+mean(IC_0_10_rmse_regkrig$rmse.kfold) #0.320 kg IC m2; r2=0.15
+IC_10_30_rmse_regkrig <- crossval_regkrig(soil_10_30cm_shp, 'kgIC.m2', model='~ annual_kwh.m2 + curvature_mean + NDVI_2017mean_1m')
+mean(IC_10_30_rmse_regkrig$rmse.kfold) #0.843 kg IC m2; r2=0.12
 
 # soilP_0_30_rmse_regkrig <- crossval_regkrig(soil_0_30cm_shp, 'gP.m2')
 # mean(soilP_0_30_rmse_regkrig$rmse.kfold) #rmse:1.13; r^2:0
@@ -1742,19 +1700,19 @@ IC_10_30_RF8var$best_models
 
 #export model testing results to csvs
 #soil organic carbon results
-orgC_0_30_model_comparison_RMSEs <- data.frame(null=orgC_0_30_rmse_null$rmse.kfold, idw=orgC_0_30_rmse_idw$rmse.kfold, nn=orgC_0_30_rmse_nn$rmse.kfold, ordkrig=orgC_0_30_rmse_ordkrig$rmse.kfold, regkrig=orgC_0_30_rmse_regkrig$rmse.kfold, lm_4terrain=orgC_0_30_rmse_lm$rmse.kfold, lm_3terrain_clay=orgC_0_30_rmse_lm_clay$rmse.kfold, RF_4terrain=orgC_0_30_rmse_RF$rmse.kfold)
-write.csv(orgC_0_30_model_comparison_RMSEs, file.path(modelResults, 'orgC_0_30cm_model_comps_RMSEs.csv'), row.names=TRUE)#row.names will be kfold
+orgC_0_30_model_comparison_RMSEs <- data.frame(null=orgC_0_30_rmse_null$rmse.kfold, idw=orgC_0_30_rmse_idw$rmse.kfold, nn=orgC_0_30_rmse_nn$rmse.kfold, ordkrig=orgC_0_30_rmse_ordkrig$rmse.kfold, regkrig=orgC_0_30_rmse_regkrig$rmse.kfold, MLR_terrain=orgC_0_30_rmse_lm$rmse.kfold,  RF_terrain=orgC_0_30_rmse_RF$rmse.kfold)
+write.csv(orgC_0_30_model_comparison_RMSEs, file.path(modelResults, 'model_comparison_v2', 'orgC_0_30cm_model_comps_RMSEs.csv'), row.names=TRUE)#row.names will be kfold
 
-orgC_0_10_model_comparison_RMSEs <- data.frame(null=orgC_0_10_rmse_null$rmse.kfold, idw=orgC_0_10_rmse_idw$rmse.kfold, nn=orgC_0_10_rmse_nn$rmse.kfold, ordkrig=orgC_0_10_rmse_ordkrig$rmse.kfold, regkrig=orgC_0_10_rmse_regkrig$rmse.kfold, lm_4terrain=orgC_0_10_rmse_lm$rmse.kfold, lm_3terrain_clay=orgC_0_10_rmse_lm_clay$rmse.kfold, RF_4terrain=orgC_0_10_rmse_RF$rmse.kfold)
-write.csv(orgC_0_10_model_comparison_RMSEs, file.path(modelResults, 'orgC_0_10cm_model_comps_RMSEs.csv'), row.names=TRUE)
+orgC_0_10_model_comparison_RMSEs <- data.frame(null=orgC_0_10_rmse_null$rmse.kfold, idw=orgC_0_10_rmse_idw$rmse.kfold, nn=orgC_0_10_rmse_nn$rmse.kfold, ordkrig=orgC_0_10_rmse_ordkrig$rmse.kfold, regkrig=orgC_0_10_rmse_regkrig$rmse.kfold, MLR_terrain=orgC_0_10_rmse_lm$rmse.kfold, RF_terrain=orgC_0_10_rmse_RF$rmse.kfold)
+write.csv(orgC_0_10_model_comparison_RMSEs, file.path(modelResults, 'model_comparison_v2', 'orgC_0_10cm_model_comps_RMSEs.csv'), row.names=TRUE)
 
-orgC_10_30_model_comparison_RMSEs <- data.frame(null=orgC_10_30_rmse_null$rmse.kfold, idw=orgC_10_30_rmse_idw$rmse.kfold, nn=orgC_10_30_rmse_nn$rmse.kfold, ordkrig=orgC_10_30_rmse_ordkrig$rmse.kfold, regkrig=orgC_10_30_rmse_regkrig$rmse.kfold, lm_4terrain=orgC_10_30_rmse_lm$rmse.kfold, lm_3terrain_clay=orgC_10_30_rmse_lm_clay$rmse.kfold, RF_4terrain=orgC_10_30_rmse_RF$rmse.kfold)
-write.csv(orgC_10_30_model_comparison_RMSEs, file.path(modelResults, 'orgC_10_30cm_model_comps_RMSEs.csv'), row.names=TRUE)
+orgC_10_30_model_comparison_RMSEs <- data.frame(null=orgC_10_30_rmse_null$rmse.kfold, idw=orgC_10_30_rmse_idw$rmse.kfold, nn=orgC_10_30_rmse_nn$rmse.kfold, ordkrig=orgC_10_30_rmse_ordkrig$rmse.kfold, regkrig=orgC_10_30_rmse_regkrig$rmse.kfold, MLR_terrain=orgC_10_30_rmse_lm$rmse.kfold, RF_terrain=orgC_10_30_rmse_RF$rmse.kfold)
+write.csv(orgC_10_30_model_comparison_RMSEs, file.path(modelResults, 'model_comparison_v2', 'orgC_10_30cm_model_comps_RMSEs.csv'), row.names=TRUE)
 
-orgC_0_30_model_comparison_OOBs <- data.frame(null=orgC_0_30_rmse_null$oob.predictions, idw=orgC_0_30_rmse_idw$oob.predictions, nn=orgC_0_30_rmse_nn$oob.predictions, ordkrig=orgC_0_30_rmse_ordkrig$oob.predictions, regkrig=orgC_0_30_rmse_regkrig$oob.predictions, lm_4terrain=orgC_0_30_rmse_lm$oob.predictions, lm_3terrain_clay=orgC_0_30_rmse_lm_clay$oob.predictions, RF_4terrain=orgC_0_30_rmse_RF$oob.predictions)
-write.csv(orgC_0_30_model_comparison_OOBs, file.path(modelResults, 'orgC_0_30cm_model_comps_OOBs.csv'), row.names=TRUE)#row.names will be kfold
+orgC_0_30_model_comparison_OOBs <- data.frame(null=orgC_0_30_rmse_null$oob.predictions, idw=orgC_0_30_rmse_idw$oob.predictions, nn=orgC_0_30_rmse_nn$oob.predictions, ordkrig=orgC_0_30_rmse_ordkrig$oob.predictions, regkrig=orgC_0_30_rmse_regkrig$oob.predictions, MLR_terrain=orgC_0_30_rmse_lm$oob.predictions, RF_terrain=orgC_0_30_rmse_RF$oob.predictions)
+write.csv(orgC_0_30_model_comparison_OOBs, file.path(modelResults, 'model_comparison_v2', 'orgC_0_30cm_model_comps_OOBs.csv'), row.names=TRUE)#row.names will be kfold
 
-orgC_0_10_model_comparison_OOBs <- data.frame(null=orgC_0_10_rmse_null$oob.predictions, idw=orgC_0_10_rmse_idw$oob.predictions, nn=orgC_0_10_rmse_nn$oob.predictions, ordkrig=orgC_0_10_rmse_ordkrig$oob.predictions, regkrig=orgC_0_10_rmse_regkrig$oob.predictions, lm_4terrain=orgC_0_10_rmse_lm$oob.predictions, lm_3terrain_clay=orgC_0_10_rmse_lm_clay$oob.predictions, RF_4terrain=orgC_0_10_rmse_RF$oob.predictions)
+orgC_0_10_model_comparison_OOBs <- data.frame(null=orgC_0_10_rmse_null$oob.predictions, idw=orgC_0_10_rmse_idw$oob.predictions, nn=orgC_0_10_rmse_nn$oob.predictions, ordkrig=orgC_0_10_rmse_ordkrig$oob.predictions, regkrig=orgC_0_10_rmse_regkrig$oob.predictions, lm_4terrain=orgC_0_10_rmse_lm$oob.predictions, MLR_terrain_clay=orgC_0_10_rmse_lm_clay$oob.predictions, RF_4terrain=orgC_0_10_rmse_RF$oob.predictions)
 write.csv(orgC_0_10_model_comparison_OOBs, file.path(modelResults, 'orgC_0_10cm_model_comps_OOBs.csv'), row.names=TRUE)
 
 orgC_10_30_model_comparison_OOBs <- data.frame(null=orgC_10_30_rmse_null$oob.predictions, idw=orgC_10_30_rmse_idw$oob.predictions, nn=orgC_10_30_rmse_nn$oob.predictions, ordkrig=orgC_10_30_rmse_ordkrig$oob.predictions, regkrig=orgC_10_30_rmse_regkrig$oob.predictions, lm_4terrain=orgC_10_30_rmse_lm$oob.predictions, lm_3terrain_clay=orgC_10_30_rmse_lm_clay$oob.predictions, RF_4terrain=orgC_10_30_rmse_RF$oob.predictions)
