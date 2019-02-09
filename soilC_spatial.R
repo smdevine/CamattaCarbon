@@ -37,8 +37,8 @@ library(extrafont)
 library(extrafontdb)
 #font_import() #only needs to be done one time after updating and re-installing R and moving and updating packages
 loadfonts(device = 'win') #once per session
-forage_terrain_energy <- read.csv(file.path(ResultsDir, 'tables', 'forage_terrain_energy_3m_final.csv'), stringsAsFactors = FALSE)
-list.files(file.path(soilCresults, 'shapefiles'))
+#forage_terrain_energy <- read.csv(file.path(ResultsDir, 'tables', 'forage_terrain_energy_3m_final.csv'), stringsAsFactors = FALSE)
+#list.files(file.path(soilCresults, 'shapefiles'))
 
 library(raster)
 library(car)
@@ -47,7 +47,7 @@ library(spdep)
 library(automap)
 set.seed(20161203)
 library(dismo)
-kf <- kfold(1:105, k=20)
+kf <- kfold(1:105, k=20) #was 20 for all results in v3 of Chp 3
 
 
 #read-in 0-30 cm and set-up k-fold tags [go to line 370 to read-in 0-30cm data now]
@@ -262,6 +262,7 @@ summary(lm(kgOrgC.m2 ~ NDVI_2017max_1m + curvature_mean + annual_kwh.m2 + slope 
 summary(lm(kgOrgC.m2 ~ NDVI_2017max_1m + NDVI_2018max_1m + curvature_mean + annual_kwh.m2 + slope + elevation, data = soil_0_30cm_shp)) #also r2=0.47 with dry year NDVI NS
 vif(lm(kgOrgC.m2 ~ NDVI_2017max_1m + curvature_mean + annual_kwh.m2 + slope + elevation, data = soil_0_30cm_shp))
 summary(lm(kgOrgC.m2 ~ NDVI_2017mean_1m + curvature_mean + annual_kwh.m2 + slope + elevation, data = soil_0_30cm_shp)) #r2=0.5; NS: NDVI_2018mean_1m
+vif(lm(kgOrgC.m2 ~ NDVI_2017mean_1m + curvature_mean, data = soil_0_30cm_shp))
 
 #add NDVI to 0-10 and 10-30 separate datasets
 soil_0_10cm_shp$NDVI_2017max_1m <- extract(maxNDVI_2017, soil_0_10cm_shp, buffer=1, fun=mean)
@@ -936,9 +937,9 @@ summary(lm(peak_2018 ~ kgOrgC.m2_lmterrain3clay, data = all_forage_sp))
 summary(lm(soil_0_30cm_shp$kgOrgC.m2 ~ soil_0_30cm_shp$kgOrgC.m2_lm.terrain3clay))
 
 crossval_lm <- function(df_pts, varname, model='~ curvature_mean + slope + annual_kwh.m2 + elevation') {
-  rmse <- rep(NA, 20)
+  rmse <- rep(NA, length(unique(kf)))
   predictions <- rep(NA, 105)
-  for (k in 1:20) {
+  for (k in 1:length(unique(kf))) {
     tst <- df_pts[kf == k, ]
     trn <- df_pts[kf != k, ]
     varname_lm <- lm(as.formula(paste(varname, model)), data = trn)
@@ -951,7 +952,7 @@ crossval_lm <- function(df_pts, varname, model='~ curvature_mean + slope + annua
   list(rmse.kfold=rmse, oob.predictions=predictions)
 }
 
-orgC_0_30_rmse_lm <- crossval_lm(soil_0_30cm_shp, 'kgOrgC.m2', model = '~  curvature_mean + annual_kwh.m2 + slope + elevation + NDVI_2017mean_1m') #best model identified in model selection process
+orgC_0_30_rmse_lm <- crossval_lm(soil_0_30cm_shp, 'kgOrgC.m2', model = '~  curvature_mean + annual_kwh.m2 + slope + elevation + NDVI_2017mean_1m') #best model identified in model selection process in both 30-fold and 20-fold tests
 mean(orgC_0_30_rmse_lm$rmse.kfold) #0.478
 # orgC_0_30_rmse_lm4var <- crossval_lm(soil_0_30cm_shp, 'kgOrgC.m2', model = '~  curvature_mean + annual_kwh.m2 + elevation + NDVI_2017mean_1m')
 # mean(orgC_0_30_rmse_lm4var$rmse.kfold) #0.497
@@ -1002,6 +1003,7 @@ mean(IC_10_30_rmse_lm$rmse.kfold) #0.849 kg IC m2; r^2=0.13
 # mean(soilP_10_30_rmse_lm$rmse.kfold) #0.486 g P soilP m2; r^2=0
 
 #model selection approach
+#on 2/6/19, commented out write.csv calls to test if 30-fold CV affects results from original 20-fold CV run
 model_selection_MLR <- function(df, varname, depth, varDir) {
   if(!dir.exists(file.path(modelResults, 'MLR_model_selection', varDir))) {
     dir.create(file.path(modelResults, 'MLR_model_selection', varDir))
@@ -1029,10 +1031,10 @@ model_selection_MLR <- function(df, varname, depth, varDir) {
   best_rmses <- unlist(lapply(summary_by_model_df, function(x) min(x$meanRMSE)))
   best_oobs_r2 <- unlist(lapply(summary_by_model_df, function(x) x$oob_r.squared[which.min(x$meanRMSE)]))
   final_summary <- data.frame(model_df=1:8, model_name=best_models, meanRMSE_20foldCV=best_rmses, OOB_r2=best_oobs_r2)
-  write.csv(mean_RMSEs_all, file.path(modelResults, 'MLR_model_selection', varDir, paste(varname, '_', depth, '_MLR_8var_selection_CV_RMSEs.csv')), row.names = FALSE)
-  write.csv(oob_predictions_all, file.path(modelResults, 'MLR_model_selection', varDir, paste(varname, '_', depth, '_MLR_8var_selection_oob_pred.csv')), row.names = FALSE)
-  write.csv(models_to_test, file.path(modelResults, 'MLR_model_selection', varDir, paste(varname, '_', depth, '_MLR_8var_selection_model_test_grid.csv')), row.names = FALSE)
-  write.csv(final_summary, file.path(modelResults, 'MLR_model_selection', varDir, paste(varname, '_', depth, '_MLR_8var_selection_BEST_models.csv')), row.names = FALSE)
+  #write.csv(mean_RMSEs_all, file.path(modelResults, 'MLR_model_selection', varDir, paste(varname, '_', depth, '_MLR_8var_selection_CV_RMSEs.csv')), row.names = FALSE)
+  #write.csv(oob_predictions_all, file.path(modelResults, 'MLR_model_selection', varDir, paste(varname, '_', depth, '_MLR_8var_selection_oob_pred.csv')), row.names = FALSE)
+  #write.csv(models_to_test, file.path(modelResults, 'MLR_model_selection', varDir, paste(varname, '_', depth, '_MLR_8var_selection_model_test_grid.csv')), row.names = FALSE)
+  #write.csv(final_summary, file.path(modelResults, 'MLR_model_selection', varDir, paste(varname, '_', depth, '_MLR_8var_selection_BEST_models.csv')), row.names = FALSE)
   list(RMSEs=mean_RMSEs_all, OOBs=oob_predictions_all, test_grid=models_to_test, best_models=final_summary)
 }
 #SOC content
@@ -1274,9 +1276,9 @@ kf <- kfold(soil_0_30cm_shp, k=20)
 tapply(kf, kf, length)
 
 crossval_ordkrig <- function(df_pts, varname, psill=0.3, model='Sph', range=50, nugget=0.2) {
-  rmse <- rep(NA, 20)
+  rmse <- rep(NA, length(unique(kf)))
   predictions <- rep(NA, 105)
-  for (k in 1:20) {
+  for (k in 1:length(unique(kf))) {
     tst <- df_pts[kf == k, ]
     trn <- df_pts[kf != k, ]
     varname_krig <- gstat(formula=as.formula(paste(varname, '~1')), locations=trn)
