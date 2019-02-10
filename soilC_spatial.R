@@ -1820,3 +1820,42 @@ regressionKrig <- function(varname, df_pts, width=21, psill=85, model="Sph", ran
 #abline(lm(peak_2018 ~ clay_est_regkrig, data = all_forage_sp), lty=2)
   summary(lm(as.formula(paste('peak_2018 ~', paste0(varname, '_est_regkrig'))), data = all_forage_sp))
 }
+
+#exploratory models
+colnames(soil_0_30cm_df)
+summary(lm(kgOrgC.m2 ~ curvature_mean_norm + annual_kwh.m2_norm, data = soil_0_30cm_df)) #only r2=0.26 with interaction offering no improvement
+summary(lm(kgOrgC.m2 ~ curvature_mean + NDVI_2017mean_1m, data = soil_0_30cm_df))
+summary(lm(kgOrgC.m2 ~ curvature_mean + NDVI_2017mean_1m + annual_kwh.m2, data = soil_0_30cm_df))
+#best 0-30 cm model
+summary(lm(kgOrgC.m2 ~ curvature_mean + annual_kwh.m2 + slope + elevation + NDVI_2017mean_1m, data = soil_0_30cm_df)) #r2=0.5
+plot(lm(kgOrgC.m2 ~ curvature_mean + annual_kwh.m2 + slope + elevation + NDVI_2017mean_1m, data = soil_0_30cm_df))
+summary(lm(kgOrgC.m2 ~ curvature_mean + annual_kwh.m2 + slope + elevation + NDVI_2017mean_1m, data = soil_0_30cm_df[-c(2,82),])) #r2=0.62
+
+#5var predicted vs. observed plot
+tiff(file = file.path(FiguresDir, 'predictedSOC_vs_observedSOC_0_30cm.tif', sep = ''), family = 'Times New Roman', width = 3, height = 3, pointsize = 11, units = 'in', res=150)
+par(mar=c(4, 4, 1, 1))
+plot(lm(kgOrgC.m2 ~ curvature_mean + annual_kwh.m2 + slope + elevation + NDVI_2017mean_1m, data = soil_0_30cm_df)$fitted.values, soil_0_30cm_shp$kgOrgC.m2, xlab='', ylab='', pch=21, cex.axis=1, cex.lab=1) #col=soil_0_30cm_shp$energy_colors, ylim = c(300, 1600), xlim=c(1400, 4700)
+points(lm(kgOrgC.m2 ~ curvature_mean + annual_kwh.m2 + slope + elevation + NDVI_2017mean_1m, data = soil_0_30cm_df)$fitted.values[c(2, 5, 82)], soil_0_30cm_shp$kgOrgC.m2[c(2, 5, 82)], col='red', pch=19)
+abline(0, 1, lty=2)
+mtext(text=expression(paste('predicted 0-30 cm SOC (kg', ~m^-2, ')')), side=1, line=2.75)
+mtext(text=expression(paste('observed 0-30 cm SOC (kg ', ~m^-2, ')')), side=2, line=2.75)
+text(x=2, y=4.8, labels=expression(paste(r^2, '= 0.50, all data')), adj=c(0,0))
+text(x=2, y=5.2, labels=paste('5-predictor model'), adj=c(0,0))
+#text(x=2, y=4.8,labels=expression(paste(r^2, '= 0.62, red pts removed')), adj=c(0,0))
+dev.off()
+
+
+summary(lm(kgOrgC.m2 ~ curvature_mean + NDVI_2017mean_1m, data = soil_0_30cm_df)) #r2=0.41
+plot(lm(kgOrgC.m2 ~ curvature_mean + NDVI_2017mean_1m, data = soil_0_30cm_df))
+summary(lm(kgOrgC.m2 ~ curvature_mean + NDVI_2017mean_1m, data = soil_0_30cm_df[-c(2,41,82),])) #r2=0.51
+tiff(file = file.path(FiguresDir, 'predictedSOC_vs_observedSOC_0_30cm_2var.tif', sep = ''), family = 'Times New Roman', width = 3, height = 3, pointsize = 11, units = 'in', res=150)
+par(mar=c(4, 4, 1, 1))
+plot(lm(kgOrgC.m2 ~ curvature_mean + NDVI_2017mean_1m, data = soil_0_30cm_df)$fitted.values, soil_0_30cm_shp$kgOrgC.m2, xlab='', ylab='', pch=21, cex.axis=1, cex.lab=1) #col=soil_0_30cm_shp$energy_colors, ylim = c(300, 1600), xlim=c(1400, 4700)
+points(lm(kgOrgC.m2 ~ curvature_mean + NDVI_2017mean_1m, data = soil_0_30cm_df)$fitted.values[c(2, 5, 82)], soil_0_30cm_shp$kgOrgC.m2[c(2, 5, 82)], col='red', pch=19)
+abline(0, 1, lty=2)
+mtext(text=expression(paste('predicted 0-30 cm SOC (kg', ~m^-2, ')')), side=1, line=2.75)
+mtext(text=expression(paste('observed 0-30 cm SOC (kg ', ~m^-2, ')')), side=2, line=2.75)
+#text(x=2, y=5.2, labels=expression(paste(r^2, '= 0.50, all data')), adj=c(0,0))
+text(x=2.25, y=5.2, labels=paste('2-predictor model'), adj=c(0,0))
+text(x=2.25, y=4.8, labels=expression(paste(r^2, '= 0.41, all data')), adj=c(0,0))
+dev.off()
