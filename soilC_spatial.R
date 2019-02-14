@@ -121,6 +121,7 @@ sample_10 <- iterate_rand_mean(10000, 10)
 sample_15 <- iterate_rand_mean(10000, 15)
 sample_20 <- iterate_rand_mean(10000, 20)
 sample_25 <- iterate_rand_mean(10000, 25)
+sample_29 <- iterate_rand_mean(10000, 29)
 sample_30 <- iterate_rand_mean(10000, 30)
 #sample_35 <- iterate_rand_mean(10000, 35)
 
@@ -136,6 +137,7 @@ calculate_thresholds(sample_10, 10000) #random approach: 0.9992 0.9119 0.6017
 calculate_thresholds(sample_15, 10000) #1.0000 0.9737 0.7284
 calculate_thresholds(sample_20, 10000) #1.0000 0.9894 0.7996
 calculate_thresholds(sample_25, 10000) #1.0000 0.9980 0.8657
+calculate_thresholds(sample_29, 10000) #1.0000 0.9993 0.9008
 calculate_thresholds(sample_30, 10000) #1.0000 0.9996 0.9091
 calculate_thresholds(sample_35, 10000) #1.000 1.000 0.938
 
@@ -518,8 +520,9 @@ kmeans_cluster <- function(classes, vars) {
   catch_clusters <- rep(NA, nrow(terrain_features_3m_df_norm))
   catch_clusters[!is.na(terrain_features_3m_df_norm$NDVI_2017mean_1m_norm)] <- km.out.norm$cluster
   #Mar2017_terrain_3m_cropped$climate_cluster <- catch_clusters
-  raster_object <- raster(extent(Mar2017_terrain_3m_cropped), resolution=res(Mar2017_terrain_3m_cropped))
+  raster_object <- raster(extent(Mar2017_terrain_3m_cropped), resolution=res(Mar2017_terrain_3m_cropped), crs=crs(Mar2017_terrain_3m_cropped))
   catch_clusters <- setValues(raster_object, catch_clusters)
+  writeRaster(catch_clusters, filename = file.path(FiguresDir, 'cluster_rasters', paste0('cluster', classes, '_', length(vars), 'vars.tif')))
   plot(catch_clusters)
   cluster_ID <- extract(catch_clusters, soil_0_30cm_shp)
   cluster_ID
@@ -527,22 +530,50 @@ kmeans_cluster <- function(classes, vars) {
 soil_0_30cm_shp$class_2 <- kmeans_cluster(2, c('NDVI_2017mean_1m_norm', 'curvature_mean_norm'))
 table(soil_0_30cm_shp$class_2)
 tapply(soil_0_30cm_shp$kgOrgC.m2, soil_0_30cm_shp$class_2, summary)
+class_2_sd <- as.numeric(tapply(soil_0_30cm_shp$kgOrgC.m2, soil_0_30cm_shp$class_2, sd))
+class_2_n <- as.numeric(table(soil_0_30cm_shp$class_2))
+class_2_CI_error <- qnorm(0.975) * class_2_sd / sqrt(class_2_n)
+class_2_CI_error
+
 soil_0_30cm_shp$class_3 <- kmeans_cluster(3, c('NDVI_2017mean_1m_norm', 'curvature_mean_norm'))
 table(soil_0_30cm_shp$class_3)
 tapply(soil_0_30cm_shp$kgOrgC.m2, soil_0_30cm_shp$class_3, summary)
+class_3_means <- as.numeric(tapply(soil_0_30cm_shp$kgOrgC.m2, soil_0_30cm_shp$class_3, mean))
+class_3_means
+class_3_sd <- as.numeric(tapply(soil_0_30cm_shp$kgOrgC.m2, soil_0_30cm_shp$class_3, sd))
+class_3_CI_error
+class_3_n <- as.numeric(table(soil_0_30cm_shp$class_3))
+class_3_CI_error <- qnorm(0.975) * class_3_sd / sqrt(class_3_n)
+class_3_upperCI <- class_3_means + qnorm(0.975) * class_3_sd / sqrt(class_3_n)
+class_3_lowerCI <- class_3_means - qnorm(0.975) * class_3_sd / sqrt(class_3_n)
+class_3_upperCI
+class_3_lowerCI
+  
 soil_0_30cm_shp$class_4 <- kmeans_cluster(4, c('NDVI_2017mean_1m_norm', 'curvature_mean_norm'))
 table(soil_0_30cm_shp$class_4)
 tapply(soil_0_30cm_shp$kgOrgC.m2, soil_0_30cm_shp$class_4, summary) #2 classes don't have different means
 tapply(soil_0_30cm_shp$NDVI_2017mean_1m, soil_0_30cm_shp$class_4, summary)
+class_4_sd <- as.numeric(tapply(soil_0_30cm_shp$kgOrgC.m2, soil_0_30cm_shp$class_4, sd))
+class_4_n <- as.numeric(table(soil_0_30cm_shp$class_4))
+class_4_CI_error <- qnorm(0.975) * class_4_sd / sqrt(class_4_n)
+class_4_CI_error
 
 #most optimum number of classes
 test2 <- pamk(na.omit(terrain_features_3m_df_norm[,c('curvature_mean_norm', 'NDVI_2017mean_1m_norm')]), krange=2:5, critout = TRUE) #3 clusters most efficient
 test3 <- pamk(na.omit(terrain_features_3m_df_norm[,c('curvature_mean_norm', 'elevation_norm', 'slope_norm', 'annual_kwh.m2_norm', 'NDVI_2017mean_1m_norm')]), krange=2:5, critout = TRUE)
 
+#NDVI classification
+soil_0_30cm_shp$class_2_NDVI <- kmeans_cluster(2, 'NDVI_2017mean_1m_norm')
+soil_0_30cm_shp$class_3_NDVI <- kmeans_cluster(3, 'NDVI_2017mean_1m_norm')
+
 #5-var classification
 soil_0_30cm_shp$class_2_5var <- kmeans_cluster(2, c('curvature_mean_norm', 'elevation_norm', 'slope_norm', 'annual_kwh.m2_norm', 'NDVI_2017mean_1m_norm'))
 table(soil_0_30cm_shp$class_2_5var)
 tapply(soil_0_30cm_shp$kgOrgC.m2, soil_0_30cm_shp$class_2_5var, summary)
+class_2_5var_sd <- as.numeric(tapply(soil_0_30cm_shp$kgOrgC.m2, soil_0_30cm_shp$class_2_5var, sd))
+class_2_5var_n <- as.numeric(table(soil_0_30cm_shp$class_2_5var))
+class_2_5var_CI_error <- qnorm(0.975) * class_2_5var_sd / sqrt(class_2_5var_n)
+class_2_5var_CI_error
 
 soil_0_30cm_shp$class_3_5var <- kmeans_cluster(3, c('curvature_mean_norm', 'elevation_norm', 'slope_norm', 'annual_kwh.m2_norm', 'NDVI_2017mean_1m_norm'))
 table(soil_0_30cm_shp$class_3_5var)
@@ -551,6 +582,13 @@ tapply(soil_0_30cm_shp$kgOrgC.m2, soil_0_30cm_shp$class_3_5var, summary)
 soil_0_30cm_shp$class_4_5var <- kmeans_cluster(4, c('curvature_mean_norm', 'elevation_norm', 'slope_norm', 'annual_kwh.m2_norm', 'NDVI_2017mean_1m_norm'))
 table(soil_0_30cm_shp$class_4_5var)
 tapply(soil_0_30cm_shp$kgOrgC.m2, soil_0_30cm_shp$class_4_5var, summary)
+round(tapply(soil_0_30cm_shp$kgOrgC.m2, soil_0_30cm_shp$class_4_5var, mean), 2)
+round(tapply(soil_0_30cm_shp$kgOrgC.m2, soil_0_30cm_shp$class_4_5var, sd), 2)
+class_4_5var_sd <- as.numeric(tapply(soil_0_30cm_shp$kgOrgC.m2, soil_0_30cm_shp$class_4_5var, sd))
+class_4_5var_n <- as.numeric(table(soil_0_30cm_shp$class_4_5var))
+class_4_5var_CI_error <- qnorm(0.975) * class_4_5var_sd / sqrt(class_4_5var_n)
+class_4_5var_CI_error
+
 
 #try using principal components
 test <- prcomp(~ curvature_mean_norm + elevation_norm + slope_norm + annual_kwh.m2_norm + NDVI_2017mean_1m_norm, data=terrain_features_3m_df_norm)
@@ -701,48 +739,52 @@ strat3_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(1, 1, 1)))
 calculate_thresholds(strat2_class3, 10000) #0.9523 0.6599 0.3648
 
 round(4*(tabulate(soil_0_30cm_shp$class_3) /105), 1)
-strat4_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(1, 1, 2)))
+strat4_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(1, 2, 1)))
 calculate_thresholds(strat4_class3, 10000) #0.9735 0.7631 0.4479
 
 round(5*(tabulate(soil_0_30cm_shp$class_3) /105), 1)
-strat5_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(2, 1, 2)))
+strat5_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(2, 2, 1)))
 calculate_thresholds(strat5_class3, 10000) #0.9944 0.8254 0.5159
 
 round(6*(tabulate(soil_0_30cm_shp$class_3) /105), 1)
-strat6_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(2, 1, 3)))
+strat6_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(2, 3, 1)))
 calculate_thresholds(strat6_class3, 10000) #0.9954 0.8668 0.5489
 
 round(7*(tabulate(soil_0_30cm_shp$class_3) /105), 1)
-strat7_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(3, 1, 3)))
+strat7_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(3, 3, 1)))
 calculate_thresholds(strat7_class3, 10000) #0.9991 0.9007 0.5860
 
 round(8*(tabulate(soil_0_30cm_shp$class_3) /105), 1)
-strat8_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(3, 1, 4)))
-calculate_thresholds(strat8_class3, 10000) #0.9994 0.9180 0.6167
+strat8_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(3, 4, 1)))
+calculate_thresholds(strat8_class3, 10000) #0.9992 0.9243 0.6305
 
 round(9*(tabulate(soil_0_30cm_shp$class_3) /105), 1)
-strat9_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(4, 1, 4)))
-calculate_thresholds(strat9_class3, 10000) #0.9999 0.9437 0.6500
+strat9_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(4, 4, 1)))
+calculate_thresholds(strat9_class3, 10000) #0.9999 0.9392 0.6510
 
 round(10*(tabulate(soil_0_30cm_shp$class_3) /105), 1)
-strat10_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(4, 1, 5)))
-calculate_thresholds(strat10_class3, 10000) #0.9998 0.9512 0.6661
+strat10_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(4, 5, 1)))
+calculate_thresholds(strat10_class3, 10000) #0.9999 0.9519 0.6784
 
 round(15*(tabulate(soil_0_30cm_shp$class_3) /105), 1)
-strat15_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(6, 2, 7)))
+strat15_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(6, 7, 2)))
 calculate_thresholds(strat15_class3, 10000) #1.0000 0.9897 0.7916
 
 round(20*(tabulate(soil_0_30cm_shp$class_3) /105), 1)
-strat20_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(8, 2, 10)))
+strat20_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(8, 10, 2)))
 calculate_thresholds(strat20_class3, 10000) #1.0000 0.9972 0.8629
 
+round(24*(tabulate(soil_0_30cm_shp$class_3) /105), 1)
+strat24_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(10, 11, 3)))
+calculate_thresholds(strat24_class3, 10000) #1.0000 0.9996 0.9067
+
 round(25*(tabulate(soil_0_30cm_shp$class_3) /105), 1)
-strat25_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(10, 3, 12)))
+strat25_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(10, 12, 3)))
 calculate_thresholds(strat25_class3, 10000) #1.0000 0.9990 0.9114
 
 round(30*(tabulate(soil_0_30cm_shp$class_3) /105), 1)
-strat30_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(13, 3, 14)))
-calculate_thresholds(strat30_class3, 10000) #1.0000 0.9990 0.9114
+strat30_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(13, 14, 3)))
+calculate_thresholds(strat30_class3, 10000) #1.0000 0.9999 0.9472
 
 ###2 var (normalized mean curv. and mean 2017 NDVI) 4 class kmeans
 round(4*(tabulate(soil_0_30cm_shp$class_4) /105), 1)
@@ -787,7 +829,7 @@ calculate_thresholds(strat25_class4, 10000) #1.0000 0.9994 0.9061
 
 round(30*(tabulate(soil_0_30cm_shp$class_4) /105), 1)
 strat30_class4 <- replicate(10000, calc_strat_mean_v2(4, 4, c(12, 2, 6, 10)))
-calculate_thresholds(strat30_class4, 10000)
+calculate_thresholds(strat30_class4, 10000) #1.0000 1.0000 0.9447
 
 #2 class approach with 5 var
 round(2*(tabulate(soil_0_30cm_shp$class_2_5var) /105), 1)
@@ -889,7 +931,7 @@ calculate_thresholds(strat25_class3_5var, 10000) #1.0000 0.9987 0.9053
 
 round(30*(tabulate(soil_0_30cm_shp$class_3_5var) /105), 1)
 strat30_class3_5var <- replicate(10000, calc_strat_mean_v2('3_5var', 3, c(8, 13, 9)))
-calculate_thresholds(strat30_class3_5var, 10000) #1.0000 0.9987 0.9053
+calculate_thresholds(strat30_class3_5var, 10000) #1.0000 0.9997 0.9406
 
 #4 class approach with 5 var
 round(4*(tabulate(soil_0_30cm_shp$class_4_5var) /105), 1)
@@ -934,7 +976,112 @@ calculate_thresholds(strat25_class4_5var, 10000) #1.0000 0.9997 0.9121
 
 round(30*(tabulate(soil_0_30cm_shp$class_4_5var) /105), 1)
 strat30_class4_5var <- replicate(10000, calc_strat_mean_v2('4_5var', 4, c(8, 8, 8, 6)))
-calculate_thresholds(strat30_class4_5var, 10000) #1.0000 0.9997 0.9121
+calculate_thresholds(strat30_class4_5var, 10000) #1.0000 1.0000 0.9462
+
+#class_no <- '3_NDVI'
+#sample_no_total <- 6
+#function to automatically calc sampling numbers
+calc_strat_mean_v3 <- function(class_no, classes, sample_no_total) {
+  class_proportions <- tabulate(soil_0_30cm_shp[[paste0('class_', class_no)]]) / nrow(soil_0_30cm_shp)
+  if(sample_no_total == classes) {
+    sample_no <- rep(1, classes)
+  } else {
+      sample_no <- round(ifelse(class_proportions * sample_no_total < 1, 1, class_proportions * sample_no_total), 0)
+  }
+  if (sum(sample_no) != sum(sample_no_total)) {
+    diff <- sum(sample_no) - sum(sample_no_total)
+    x <- max(sample_no[sample_no > 1] -(class_proportions*sample_no_total)[sample_no > 1])
+    sample_no[which(sample_no - class_proportions * sample_no_total == x)] <- sample_no[which(sample_no - class_proportions * sample_no_total == x)] - diff
+  }
+  #print(sample_no)
+  results <- numeric(length=classes)
+  for (i in seq_along(class_proportions)) {
+    results[i] <- mean(soil_0_30cm_shp$kgOrgC.m2[sample(which(soil_0_30cm_shp[[paste0('class_', class_no)]]==(1:classes)[i]), sample_no[i])]) * class_proportions[i]
+  }
+  sum(results)
+}
+
+#2 class approach with NDVI
+strat2_class2_NDVI <- replicate(10000, calc_strat_mean_v2('2_NDVI', 2, c(0, 1)))
+calculate_thresholds(strat2_class2_NDVI, 10000)
+
+strat2_class2_NDVI <- replicate(10000, calc_strat_mean_v3('2_NDVI', 2, 2))
+calculate_thresholds(strat2_class2_NDVI, 10000)
+
+strat3_class2_NDVI <- replicate(10000, calc_strat_mean_v3('2_NDVI', 2, 3))
+calculate_thresholds(strat3_class2_NDVI, 10000)
+
+strat4_class2_NDVI <- replicate(10000, calc_strat_mean_v3('2_NDVI', 2, 4))
+calculate_thresholds(strat4_class2_NDVI, 10000) 
+
+strat5_class2_NDVI <- replicate(10000, calc_strat_mean_v3('2_NDVI', 2, 5))
+calculate_thresholds(strat5_class2_NDVI, 10000) 
+
+strat6_class2_NDVI <- replicate(10000, calc_strat_mean_v3('2_NDVI', 2, 6))
+calculate_thresholds(strat6_class2_NDVI, 10000) 
+
+strat7_class2_NDVI <- replicate(10000, calc_strat_mean_v3('2_NDVI', 2, 7))
+calculate_thresholds(strat7_class2_NDVI, 10000) #0.9994 0.8863 0.5669
+
+strat8_class2_NDVI <- replicate(10000, calc_strat_mean_v3('2_NDVI', 2, 8))
+calculate_thresholds(strat8_class2_NDVI, 10000) #0.9997 0.9207 0.6241
+
+strat9_class2_NDVI <- replicate(10000, calc_strat_mean_v3('2_NDVI', 2, 9))
+calculate_thresholds(strat9_class2_NDVI, 10000) #0.9999 0.9407 0.6484
+
+strat10_class2_NDVI <- replicate(10000, calc_strat_mean_v3('2_NDVI', 2, 10))
+calculate_thresholds(strat10_class2_NDVI, 10000) #0.9999 0.9513 0.6667
+
+strat15_class2_NDVI <- replicate(10000, calc_strat_mean_v3('2_NDVI', 2, 15))
+calculate_thresholds(strat15_class2_NDVI, 10000) #1.0000 0.9884 0.7933
+
+strat20_class2_NDVI <- replicate(10000, calc_strat_mean_v3('2_NDVI', 2, 20))
+calculate_thresholds(strat20_class2_NDVI, 10000) #1.0000 0.9969 0.8624
+
+strat25_class2_NDVI <- replicate(10000, calc_strat_mean_v3('2_NDVI', 2, 25))
+calculate_thresholds(strat25_class2_NDVI, 10000) #1.0000 0.9982 0.8888
+
+strat30_class2_NDVI <- replicate(10000, calc_strat_mean_v3('2_NDVI', 2, 30))
+calculate_thresholds(strat30_class2_NDVI, 10000) #1.0000 0.9994 0.9216
+
+#3 class NDVI approach
+#2 class approach with NDVI
+strat3_class3_NDVI <- replicate(10000, calc_strat_mean_v3('3_NDVI', 3, 3))
+calculate_thresholds(strat3_class3_NDVI, 10000)
+
+strat4_class3_NDVI <- replicate(10000, calc_strat_mean_v3('3_NDVI', 3, 4))
+calculate_thresholds(strat4_class3_NDVI, 10000) 
+
+strat5_class3_NDVI <- replicate(10000, calc_strat_mean_v3('3_NDVI', 3, 5))
+calculate_thresholds(strat5_class3_NDVI, 10000) 
+
+strat6_class3_NDVI <- replicate(10000, calc_strat_mean_v3('3_NDVI', 3, 6))
+calculate_thresholds(strat6_class3_NDVI, 10000) 
+
+strat7_class3_NDVI <- replicate(10000, calc_strat_mean_v3('3_NDVI', 3, 7))
+calculate_thresholds(strat7_class3_NDVI, 10000) 
+
+strat8_class3_NDVI <- replicate(10000, calc_strat_mean_v3('3_NDVI', 3, 8))
+calculate_thresholds(strat8_class3_NDVI, 10000) 
+
+strat9_class3_NDVI <- replicate(10000, calc_strat_mean_v3('3_NDVI', 3, 9))
+calculate_thresholds(strat9_class3_NDVI, 10000) 
+
+strat10_class3_NDVI <- replicate(10000, calc_strat_mean_v3('3_NDVI', 3, 10))
+calculate_thresholds(strat10_class3_NDVI, 10000) 
+
+strat15_class3_NDVI <- replicate(10000, calc_strat_mean_v3('3_NDVI', 3, 15))
+calculate_thresholds(strat15_class3_NDVI, 10000) 
+
+strat20_class3_NDVI <- replicate(10000, calc_strat_mean_v3('3_NDVI', 3, 20))
+calculate_thresholds(strat20_class3_NDVI, 10000) 
+
+strat25_class3_NDVI <- replicate(10000, calc_strat_mean_v3('3_NDVI', 3, 25))
+calculate_thresholds(strat25_class3_NDVI, 10000) 
+
+strat30_class3_NDVI <- replicate(10000, calc_strat_mean_v3('3_NDVI', 3, 30))
+calculate_thresholds(strat30_class3_NDVI, 10000) 
+
 
 results_2class_2var <- data.frame(n=c(2:10, 15, 20, 25, 30), do.call(rbind, lapply(list(strat2_class2, strat3_class2, strat4_class2, strat5_class2, strat6_class2, strat7_class2, strat8_class2, strat9_class2, strat10_class2, strat15_class2, strat20_class2, strat25_class2, strat30_class2), calculate_thresholds,  iterations=10000)))
 colnames(results_2class_2var)[2:4] <- c('prob_20%', 'prob_10%', 'prob_5%')
@@ -964,18 +1111,24 @@ results_random_sampling <- data.frame(n=c(1:10, 15, 20, 25, 30), do.call(rbind, 
 colnames(results_random_sampling)[2:4] <- c('prob_20%', 'prob_10%', 'prob_5%')
 results_random_sampling
 
-#3 class comparison with random using 2 vars
+#2 and 3 class comparison with random using 2 vars
 tiff(file = file.path(FiguresDir, 'random_vs_strat_3class_2var.tif', sep = ''), family = 'Times New Roman', width = 4.5, height = 4.5, pointsize = 11, units = 'in', res=150)
 par(mar=c(4.5, 4.5, 1, 1))
-plot(results_random_sampling$n, results_random_sampling$`prob_5%`, ylim=c(0, 1), xlab='', ylab='', type='b', col='grey', lty=1, pch=1)
-lines(results_random_sampling$n, results_random_sampling$`prob_10%`, type='b', pch=3, col='grey', lty=2)
-lines(results_random_sampling$n, results_random_sampling$`prob_20%`, type='b', pch=16, col='grey', lty=3)
+plot(results_random_sampling$n, results_random_sampling$`prob_5%`, ylim=c(0, 1), xlab='', ylab='', type='b', col='lightgrey', lty=1, pch=1)
+lines(results_random_sampling$n, results_random_sampling$`prob_10%`, type='b', pch=3, col='lightgrey', lty=2)
+lines(results_random_sampling$n, results_random_sampling$`prob_20%`, type='b', pch=16, col='lightgrey', lty=3)
 lines(results_3class_2var$n, results_3class_2var$`prob_5%`, type='b', col='black', lty=1, pch=1)
 lines(results_3class_2var$n, results_3class_2var$`prob_10%`, type='b', col='black', lty=2, pch=3)
 lines(results_3class_2var$n, results_3class_2var$`prob_20%`, type='b', col='black', lty=3, pch=16)
+# lines(results_2class_2var$n, results_2class_2var$`prob_5%`, type='b', col='darkgrey', lty=1, pch=1)
+# lines(results_2class_2var$n, results_2class_2var$`prob_10%`, type='b', col='darkgrey', lty=2, pch=3)
+# lines(results_2class_2var$n, results_2class_2var$`prob_20%`, type='b', col='darkgrey', lty=3, pch=16)
+points(x=2, y=calculate_thresholds(strat2_class2, 10000)[1], col='darkgrey', pch = 8)
+points(x=2, y=calculate_thresholds(strat2_class2, 10000)[2], col='darkgrey', pch = 8)
+points(x=2, y=calculate_thresholds(strat2_class2, 10000)[3], col='darkgrey', pch = 8)
 mtext(text='number of samples', side=1, line=2.75)
 mtext(text=paste('probability to estimate mean SOC with accuracy of', "\u00B1", 'X%'), side=2, line=2.75)
-legend('bottomright', legend = c('random ±5%', 'stratified ±5%', 'random ±10%', 'stratified ±10%', 'random ±20%', 'stratified ±20%'), col=c('grey', 'black', 'grey', 'black', 'grey', 'black'), lty=c(1, 1, 2, 2, 3, 3), pch=c(1,1, 3, 3, 16, 16))
+legend('bottomright', legend = c('stratified ± X%, k=2', 'stratified ± 20%, k=3', 'random ± 20%', 'stratified ± 10%, k=3', 'random ± 10%', 'stratified ± 5%,  k=3', 'random ± 5%'), col=c('darkgrey', 'black', 'lightgrey', 'black', 'lightgrey', 'black', 'lightgrey'), lty=c(NA, 3, 3, 2, 2, 1, 1), pch=c(8, 16, 16, 3, 3, 1, 1), inset = 0.05)
 abline(h=0.9, lty=4, col='black')
 dev.off()
 
@@ -989,7 +1142,7 @@ lines(results_2class_2var$n, results_2class_2var$`prob_10%`, type='b', col='blac
 lines(results_2class_2var$n, results_2class_2var$`prob_20%`, type='b', col='black', lty=3, pch=16)
 mtext(text='number of samples', side=1, line=2.75)
 mtext(text=paste('probability to estimate mean SOC with accuracy of', "\u00B1", 'X%'), side=2, line=2.75)
-legend('bottomright', legend = c('random ±5%', 'stratified ±5%', 'random ±10%', 'stratified ±10%', 'random ±20%', 'stratified ±20%'), col=c('grey', 'black', 'grey', 'black', 'grey', 'black'), lty=c(1, 1, 2, 2, 3, 3), pch=c(1,1, 3, 3, 16, 16))
+legend('bottomright', legend = c('stratified ±20%', 'random ±20%', 'stratified ±10%', 'random ±10%', 'stratified ±5%', 'random ±5%'), col=c('black', 'grey', 'black', 'grey', 'black', 'grey'), lty=c(3, 3, 2, 2, 1, 1), pch=c(16, 16, 3, 3, 1, 1))
 abline(h=0.9, lty=4, col='black')
 dev.off()
 
@@ -1003,7 +1156,7 @@ lines(results_2class_5var$n, results_2class_5var$`prob_10%`, type='b', col='blac
 lines(results_2class_5var$n, results_2class_5var$`prob_20%`, type='b', col='black', lty=3, pch=16)
 mtext(text='number of samples', side=1, line=2.75)
 mtext(text=paste('probability to estimate mean SOC with accuracy of', "\u00B1", 'X%'), side=2, line=2.75)
-legend('bottomright', legend = c('random ±5%', 'stratified ±5%', 'random ±10%', 'stratified ±10%', 'random ±20%', 'stratified ±20%'), col=c('grey', 'black', 'grey', 'black', 'grey', 'black'), lty=c(1, 1, 2, 2, 3, 3), pch=c(1,1, 3, 3, 16, 16))
+legend('bottomright', legend = c('stratified ±20%', 'random ±20%', 'stratified ±10%', 'random ±10%', 'stratified ±5%', 'random ±5%'), col=c('black', 'grey', 'black', 'grey', 'black', 'grey'), lty=c(3, 3, 2, 2, 1, 1), pch=c(16, 16, 3, 3, 1, 1))
 abline(h=0.9, lty=4, col='black')
 dev.off()
 
@@ -1017,7 +1170,7 @@ lines(results_3class_5var$n, results_3class_5var$`prob_10%`, type='b', col='blac
 lines(results_3class_5var$n, results_3class_5var$`prob_20%`, type='b', col='black', lty=3, pch=16)
 mtext(text='number of samples', side=1, line=2.75)
 mtext(text=paste('probability to estimate mean SOC with accuracy of', "\u00B1", 'X%'), side=2, line=2.75)
-legend('bottomright', legend = c('random ±5%', 'stratified ±5%', 'random ±10%', 'stratified ±10%', 'random ±20%', 'stratified ±20%'), col=c('grey', 'black', 'grey', 'black', 'grey', 'black'), lty=c(1, 1, 2, 2, 3, 3), pch=c(1,1, 3, 3, 16, 16))
+legend('bottomright', legend = c('stratified ±20%', 'random ±20%', 'stratified ±10%', 'random ±10%', 'stratified ±5%', 'random ±5%'), col=c('black', 'grey', 'black', 'grey', 'black', 'grey'), lty=c(3, 3, 2, 2, 1, 1), pch=c(16, 16, 3, 3, 1, 1))
 abline(h=0.9, lty=4, col='black')
 dev.off()
 
@@ -1031,9 +1184,15 @@ lines(results_4class_5var$n, results_4class_5var$`prob_10%`, type='b', col='blac
 lines(results_4class_5var$n, results_4class_5var$`prob_20%`, type='b', col='black', lty=3, pch=16)
 mtext(text='number of samples', side=1, line=2.75)
 mtext(text=paste('probability to estimate mean SOC with accuracy of', "\u00B1", 'X%'), side=2, line=2.75)
-legend('bottomright', legend = c('random ±5%', 'stratified ±5%', 'random ±10%', 'stratified ±10%', 'random ±20%', 'stratified ±20%'), col=c('grey', 'black', 'grey', 'black', 'grey', 'black'), lty=c(1, 1, 2, 2, 3, 3), pch=c(1,1, 3, 3, 16, 16))
+legend('bottomright', legend = c('stratified ± 20%, k=4', 'random ± 20%', 'stratified ± 10%, k=4', 'random ± 10%', 'stratified ± 5%, k=4', 'random ± 5%'), col=c('black', 'grey', 'black', 'grey', 'black', 'grey'), lty=c(3, 3, 2, 2, 1, 1), pch=c(16, 16, 3, 3, 1, 1))
 abline(h=0.9, lty=4, col='black')
 dev.off()
+
+#test to see if weighting of each class by aerial proportion with even allocation of sampling resources
+round(15*(tabulate(soil_0_30cm_shp$class_3) /105), 1)
+strat15_even_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(6, 7, 2)))
+calculate_thresholds(strat15_even_class3, 10000) #1.0000 0.9897 0.7916
+
 
 #now calculate distance from forage sampling points in 2017 to soil sampling points in 2018
 # forage_data <- read.csv(file.path(forageDir, 'summaries', 'forage2017_2018_summary.csv'), stringsAsFactors=FALSE)
