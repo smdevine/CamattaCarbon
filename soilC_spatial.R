@@ -267,6 +267,8 @@ summary(lm(kgOrgC.m2 ~ NDVI_2017max_1m + NDVI_2018max_1m + curvature_mean + annu
 vif(lm(kgOrgC.m2 ~ NDVI_2017max_1m + curvature_mean + annual_kwh.m2 + slope + elevation, data = soil_0_30cm_shp))
 summary(lm(kgOrgC.m2 ~ NDVI_2017mean_1m + curvature_mean + annual_kwh.m2 + slope + elevation, data = soil_0_30cm_shp)) #r2=0.5; NS: NDVI_2018mean_1m
 vif(lm(kgOrgC.m2 ~ NDVI_2017mean_1m + curvature_mean, data = soil_0_30cm_shp))
+summary(lm(kgOrgC.m2 ~ NDVI_2017mean_1m + curvature_mean + annual_kwh.m2, data = soil_0_30cm_shp))
+
 
 #add NDVI to 0-10 and 10-30 separate datasets
 soil_0_10cm_shp$NDVI_2017max_1m <- extract(maxNDVI_2017, soil_0_10cm_shp, buffer=1, fun=mean)
@@ -509,8 +511,12 @@ colnames(terrain_features_3m_df_norm) <- c('curvature_mean_norm', 'elevation_nor
 
 #get weights from lm
 summary(lm(kgOrgC.m2 ~ curvature_mean_norm + NDVI_2017mean_1m_norm + elevation_norm + annual_kwh.m2_norm + slope_norm, data=soil_0_30cm_shp)) #0.50
+summary(lm(kgOrgC.m2 ~ curvature_mean_norm + NDVI_2017mean_1m_norm + elevation_norm + annual_kwh.m2_norm, data=soil_0_30cm_shp)) #0.45
 summary(lm(kgOrgC.m2 ~ curvature_mean_norm + NDVI_2017mean_1m_norm + annual_kwh.m2_norm, data=soil_0_30cm_shp)) #r2=0.44
-summary(lm(kgOrgC.m2 ~ curvature_mean_norm + NDVI_2017mean_1m_norm + elevation_norm, data=soil_0_30cm_shp))
+vif(lm(kgOrgC.m2 ~ curvature_mean_norm + NDVI_2017mean_1m_norm + annual_kwh.m2_norm, data=soil_0_30cm_shp))
+summary(lm(kgOrgC.m2 ~ curvature_mean_norm + NDVI_2017mean_1m_norm, data=soil_0_30cm_shp))
+summary(lm(kgOrgC.m2 ~ curvature_mean_norm + NDVI_2017mean_1m_norm + annual_kwh.m2_norm + slope_norm, data=soil_0_30cm_shp))
+
 vif(lm(kgOrgC.m2 ~ curvature_mean_norm + NDVI_2017mean_1m_norm + elevation_norm, data=soil_0_30cm_shp))
 summary(lm(kgOrgC.m2 ~ curvature_mean_norm + NDVI_2017mean_1m_norm, data=soil_0_30cm_shp)) #r2=0.41
 vif(lm(kgOrgC.m2 ~ curvature_mean_norm + NDVI_2017mean_1m_norm, data=soil_0_30cm_shp))
@@ -527,6 +533,32 @@ kmeans_cluster <- function(classes, vars) {
   cluster_ID <- extract(catch_clusters, soil_0_30cm_shp)
   cluster_ID
 }
+soil_0_30cm_shp$SOC_0_30cm_5var.prediction <- lm(kgOrgC.m2 ~ curvature_mean_norm + NDVI_2017mean_1m_norm + elevation_norm + annual_kwh.m2_norm + slope_norm, data=soil_0_30cm_shp)$fitted.values
+#quintiles
+quantile(soil_0_30cm_shp$SOC_0_30cm_5var.prediction, c(0.2, 0.4, 0.6, 0.8))
+soil_0_30cm_shp$class_SOC_0_30cm_5var.quintile <- ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 3.215, 1, ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 3.580, 2, ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 3.812, 3, ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 4.086, 4, 5))))
+#sectiles
+quantile(soil_0_30cm_shp$SOC_0_30cm_5var.prediction, c(1/6, 2/6, 3/6, 4/6, 5/6))
+soil_0_30cm_shp$class_SOC_0_30cm_5var.quintile <- ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 3.143, 1, ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 3.487, 2, ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 3.675, 3, ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 3.880, 4, ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 4.147, 5))))
+
+#quartiles
+soil_0_30cm_shp$class_SOC_0_30cm_5var.quartile <- ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 3.358, 1, ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 3.675, 2, ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 4.000, 3, 4))) #breaks are from actual data
+table(soil_0_30cm_shp$class_SOC_0_30cm_5var.quartile)
+tapply(soil_0_30cm_shp$kgOrgC.m2, soil_0_30cm_shp$class_SOC_0_30cm_5var.quartile, summary)
+tapply(soil_0_30cm_shp$kgOrgC.m2, soil_0_30cm_shp$class_SOC_0_30cm_5var.quartile, sd)
+class_SOC_0_30cm_5var.quartile_sd <- as.numeric(tapply(soil_0_30cm_shp$kgOrgC.m2, soil_0_30cm_shp$class_SOC_0_30cm_5var.quartile, sd))
+class_SOC_0_30cm_5var.quartile_n <- as.numeric(table(soil_0_30cm_shp$class_SOC_0_30cm_5var.quartile))
+class_SOC_0_30cm_5var.quartile_CI_error <- qnorm(0.975) * class_SOC_0_30cm_5var.quartile_sd / sqrt(class_SOC_0_30cm_5var.quartile_n)
+class_SOC_0_30cm_5var.quartile_CI_error
+
+#now do terciles
+quantile(soil_0_30cm_shp$SOC_0_30cm_5var.prediction, 0.333) #3.485
+quantile(soil_0_30cm_shp$SOC_0_30cm_5var.prediction, 0.666) #3.879
+soil_0_30cm_shp$class_SOC_0_30cm_5var.terciles <- ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 3.485, 1, ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 3.879, 2, 3))
+
+#now do halves
+soil_0_30cm_shp$class_SOC_0_30cm_5var.lower.upper <- ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 3.675, 1, 2)
+
 soil_0_30cm_shp$class_2 <- kmeans_cluster(2, c('NDVI_2017mean_1m_norm', 'curvature_mean_norm'))
 table(soil_0_30cm_shp$class_2)
 tapply(soil_0_30cm_shp$kgOrgC.m2, soil_0_30cm_shp$class_2, summary)
@@ -541,9 +573,9 @@ tapply(soil_0_30cm_shp$kgOrgC.m2, soil_0_30cm_shp$class_3, summary)
 class_3_means <- as.numeric(tapply(soil_0_30cm_shp$kgOrgC.m2, soil_0_30cm_shp$class_3, mean))
 class_3_means
 class_3_sd <- as.numeric(tapply(soil_0_30cm_shp$kgOrgC.m2, soil_0_30cm_shp$class_3, sd))
-class_3_CI_error
 class_3_n <- as.numeric(table(soil_0_30cm_shp$class_3))
 class_3_CI_error <- qnorm(0.975) * class_3_sd / sqrt(class_3_n)
+class_3_CI_error
 class_3_upperCI <- class_3_means + qnorm(0.975) * class_3_sd / sqrt(class_3_n)
 class_3_lowerCI <- class_3_means - qnorm(0.975) * class_3_sd / sqrt(class_3_n)
 class_3_upperCI
@@ -680,6 +712,7 @@ calc_strat_mean_v2 <- function(class_no, classes, sample_no) {
   sum(results)
 }
 
+
 #2 var (normalized mean curv. and mean 2017 NDVI) 2 class kmeans
 round(2*(tabulate(soil_0_30cm_shp$class_2) /105), 1)
 strat2_class2 <- replicate(10000, calc_strat_mean_v2(2, 2, c(1, 1)))
@@ -736,7 +769,7 @@ calculate_thresholds(strat30_class2, 10000) #1.0000 0.9995 0.9035
 ###2 var (normalized mean curv. and mean 2017 NDVI) 3 class kmeans
 round(3*(tabulate(soil_0_30cm_shp$class_3) /105), 1)
 strat3_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(1, 1, 1)))
-calculate_thresholds(strat2_class3, 10000) #0.9523 0.6599 0.3648
+calculate_thresholds(strat3_class3, 10000) #0.9523 0.6599 0.3648
 
 round(4*(tabulate(soil_0_30cm_shp$class_3) /105), 1)
 strat4_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(1, 2, 1)))
@@ -1000,11 +1033,74 @@ calc_strat_mean_v3 <- function(class_no, classes, sample_no_total) {
   }
   sum(results)
 }
+#5 var predictions classified into 4 groups based on the prediction quartiles (26, 26, 26, and 27 in 1 to 4, respectively)
+soil_0_30cm_shp$class_SOC_0_30cm_5var.quartile
+strat2_classSOC30_5var.quartile<- replicate(10000, calc_strat_mean_v3('SOC_0_30cm_5var.quartile', 4, 2))
+calculate_thresholds(strat2_classSOC30_5var.quartile, 10000)
+
+strat4_classSOC30_5var.quartile<- replicate(10000, calc_strat_mean_v3('SOC_0_30cm_5var.quartile', 4, 4))
+calculate_thresholds(strat4_classSOC30_5var.quartile, 10000)
+
+strat6_classSOC30_5var.quartile<- replicate(10000, calc_strat_mean_v3('SOC_0_30cm_5var.quartile', 4, 6))
+calculate_thresholds(strat6_classSOC30_5var.quartile, 10000)
+
+strat8_classSOC30_5var.quartile<- replicate(10000, calc_strat_mean_v3('SOC_0_30cm_5var.quartile', 4, 8))
+calculate_thresholds(strat8_classSOC30_5var.quartile, 10000)#8 achieves 95% probability of 10% accuracy
+
+strat12_classSOC30_5var.quartile<- replicate(10000, calc_strat_mean_v3('SOC_0_30cm_5var.quartile', 4, 12))
+calculate_thresholds(strat12_classSOC30_5var.quartile, 10000) 
+
+strat16_classSOC30_5var.quartile<- replicate(10000, calc_strat_mean_v3('SOC_0_30cm_5var.quartile', 4, 16))
+calculate_thresholds(strat16_classSOC30_5var.quartile, 10000)
+
+strat20_classSOC30_5var.quartile<- replicate(10000, calc_strat_mean_v3('SOC_0_30cm_5var.quartile', 4, 20))
+calculate_thresholds(strat20_classSOC30_5var.quartile, 10000) #20 achieves 5% accuracy # 1.0000 0.9995 0.9099
+
+strat24_classSOC30_5var.quartile<- replicate(10000, calc_strat_mean_v3('SOC_0_30cm_5var.quartile', 4, 24))
+calculate_thresholds(strat24_classSOC30_5var.quartile, 10000)
+
+strat28_classSOC30_5var.quartile<- replicate(10000, calc_strat_mean_v3('SOC_0_30cm_5var.quartile', 4, 28))
+calculate_thresholds(strat28_classSOC30_5var.quartile, 10000)
+
+#strat20_classSOC30_5var.quartile_test <- replicate(10000, calc_strat_mean_v2('SOC_0_30cm_5var.quartile', 4, c(3, 7, 7, 3)))
+#calculate_thresholds(strat20_classSOC30_5var.quartile_test, 10000)
+
+#now with the terciles from the 5 var predictions
+strat3_classSOC30_5var.terciles <- replicate(10000, calc_strat_mean_v3('SOC_0_30cm_5var.terciles', 3, 3))
+calculate_thresholds(strat3_classSOC30_5var.terciles, 10000)
+
+strat6_classSOC30_5var.terciles<- replicate(10000, calc_strat_mean_v3('SOC_0_30cm_5var.terciles', 3, 6))
+calculate_thresholds(strat6_classSOC30_5var.terciles, 10000) #0.9993 0.9075 0.6027
+
+strat9_classSOC30_5var.terciles<- replicate(10000, calc_strat_mean_v3('SOC_0_30cm_5var.terciles', 3, 9))
+calculate_thresholds(strat9_classSOC30_5var.terciles, 10000)#8 achieves 95% probability of 10% accuracy #0.9998 0.9647 0.7025
+
+strat12_classSOC30_5var.terciles<- replicate(10000, calc_strat_mean_v3('SOC_0_30cm_5var.terciles', 3, 12))
+calculate_thresholds(strat12_classSOC30_5var.terciles, 10000) #1.0000 0.9854 0.7719
+
+strat15_classSOC30_5var.terciles<- replicate(10000, calc_strat_mean_v3('SOC_0_30cm_5var.terciles', 3, 15))
+calculate_thresholds(strat15_classSOC30_5var.terciles, 10000)
+
+strat18_classSOC30_5var.terciles<- replicate(10000, calc_strat_mean_v3('SOC_0_30cm_5var.terciles', 3, 18))
+calculate_thresholds(strat18_classSOC30_5var.terciles, 10000)
+
+strat21_classSOC30_5var.terciles<- replicate(10000, calc_strat_mean_v3('SOC_0_30cm_5var.terciles', 3, 21))
+calculate_thresholds(strat21_classSOC30_5var.terciles, 10000)
+
+strat24_classSOC30_5var.terciles<- replicate(10000, calc_strat_mean_v3('SOC_0_30cm_5var.terciles', 3, 24))
+calculate_thresholds(strat24_classSOC30_5var.terciles, 10000)
+
+strat27_classSOC30_5var.terciles<- replicate(10000, calc_strat_mean_v3('SOC_0_30cm_5var.terciles', 3, 27))
+calculate_thresholds(strat27_classSOC30_5var.terciles, 10000)
+
+strat30_classSOC30_5var.terciles<- replicate(10000, calc_strat_mean_v3('SOC_0_30cm_5var.terciles', 3, 30))
+calculate_thresholds(strat30_classSOC30_5var.terciles, 10000)
+
+#lower.upper approach
+strat2_classSOC30_5var.lower.upper <- replicate(10000, calc_strat_mean_v3('SOC_0_30cm_5var.lower.upper', 2, 2))
+calculate_thresholds(strat2_classSOC30_5var.lower.upper, 10000) #
 
 #2 class approach with NDVI
-strat2_class2_NDVI <- replicate(10000, calc_strat_mean_v2('2_NDVI', 2, c(0, 1)))
-calculate_thresholds(strat2_class2_NDVI, 10000)
-
 strat2_class2_NDVI <- replicate(10000, calc_strat_mean_v3('2_NDVI', 2, 2))
 calculate_thresholds(strat2_class2_NDVI, 10000)
 
@@ -2469,9 +2565,14 @@ colnames(soil_0_30cm_df)
 summary(lm(kgOrgC.m2 ~ curvature_mean_norm + annual_kwh.m2_norm, data = soil_0_30cm_df)) #only r2=0.26 with interaction offering no improvement
 summary(lm(kgOrgC.m2 ~ curvature_mean + NDVI_2017mean_1m, data = soil_0_30cm_df))
 summary(lm(kgOrgC.m2 ~ curvature_mean + NDVI_2017mean_1m + annual_kwh.m2, data = soil_0_30cm_df))
+
 #best 0-30 cm model
 summary(lm(kgOrgC.m2 ~ curvature_mean + annual_kwh.m2 + slope + elevation + NDVI_2017mean_1m, data = soil_0_30cm_df)) #r2=0.5
+vif(lm(kgOrgC.m2 ~ curvature_mean + annual_kwh.m2 + slope + elevation + NDVI_2017mean_1m, data = soil_0_30cm_df))
+vif(lm(kgOrgC.m2 ~ curvature_mean_norm + annual_kwh.m2_norm + slope_norm + elevation_norm + NDVI_2017mean_1m_norm, data = soil_0_30cm_df))
 plot(lm(kgOrgC.m2 ~ curvature_mean + annual_kwh.m2 + slope + elevation + NDVI_2017mean_1m, data = soil_0_30cm_df))
+
+
 summary(lm(kgOrgC.m2 ~ curvature_mean + annual_kwh.m2 + slope + elevation + NDVI_2017mean_1m, data = soil_0_30cm_df[-c(2,82),])) #r2=0.62
 
 #5var predicted vs. observed plot
@@ -2489,6 +2590,7 @@ dev.off()
 
 
 summary(lm(kgOrgC.m2 ~ curvature_mean + NDVI_2017mean_1m, data = soil_0_30cm_df)) #r2=0.41
+summary(lm(kgOrgC.m2 ~ curvature_mean_norm + NDVI_2017mean_1m_norm, data = soil_0_30cm_df))
 plot(lm(kgOrgC.m2 ~ curvature_mean + NDVI_2017mean_1m, data = soil_0_30cm_df))
 summary(lm(kgOrgC.m2 ~ curvature_mean + NDVI_2017mean_1m, data = soil_0_30cm_df[-c(2,41,82),])) #r2=0.51
 tiff(file = file.path(FiguresDir, 'predictedSOC_vs_observedSOC_0_30cm_2var.tif', sep = ''), family = 'Times New Roman', width = 3, height = 3, pointsize = 11, units = 'in', res=150)
