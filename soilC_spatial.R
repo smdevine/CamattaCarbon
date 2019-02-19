@@ -118,9 +118,14 @@ sample_7 <- iterate_rand_mean(10000, 7)
 sample_8 <- iterate_rand_mean(10000, 8)
 sample_9 <- iterate_rand_mean(10000, 9)
 sample_10 <- iterate_rand_mean(10000, 10)
+sample_12 <- iterate_rand_mean(10000, 12)
 sample_15 <- iterate_rand_mean(10000, 15)
+sample_18 <- iterate_rand_mean(10000, 18)
 sample_20 <- iterate_rand_mean(10000, 20)
+sample_21 <- iterate_rand_mean(10000, 21)
+sample_24 <- iterate_rand_mean(10000, 24)
 sample_25 <- iterate_rand_mean(10000, 25)
+sample_27 <- iterate_rand_mean(10000, 27)
 sample_29 <- iterate_rand_mean(10000, 29)
 sample_30 <- iterate_rand_mean(10000, 30)
 #sample_35 <- iterate_rand_mean(10000, 35)
@@ -528,18 +533,19 @@ kmeans_cluster <- function(classes, vars) {
   #Mar2017_terrain_3m_cropped$climate_cluster <- catch_clusters
   raster_object <- raster(extent(Mar2017_terrain_3m_cropped), resolution=res(Mar2017_terrain_3m_cropped), crs=crs(Mar2017_terrain_3m_cropped))
   catch_clusters <- setValues(raster_object, catch_clusters)
-  writeRaster(catch_clusters, filename = file.path(FiguresDir, 'cluster_rasters', paste0('cluster', classes, '_', length(vars), 'vars.tif')))
+  #writeRaster(catch_clusters, filename = file.path(FiguresDir, 'cluster_rasters', paste0('cluster', classes, '_', length(vars), 'vars.tif')))
   plot(catch_clusters)
   cluster_ID <- extract(catch_clusters, soil_0_30cm_shp)
   cluster_ID
 }
 soil_0_30cm_shp$SOC_0_30cm_5var.prediction <- lm(kgOrgC.m2 ~ curvature_mean_norm + NDVI_2017mean_1m_norm + elevation_norm + annual_kwh.m2_norm + slope_norm, data=soil_0_30cm_shp)$fitted.values
+summary(soil_0_30cm_shp$SOC_0_30cm_5var.prediction)
 #quintiles
 quantile(soil_0_30cm_shp$SOC_0_30cm_5var.prediction, c(0.2, 0.4, 0.6, 0.8))
 soil_0_30cm_shp$class_SOC_0_30cm_5var.quintile <- ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 3.215, 1, ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 3.580, 2, ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 3.812, 3, ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 4.086, 4, 5))))
 #sectiles
 quantile(soil_0_30cm_shp$SOC_0_30cm_5var.prediction, c(1/6, 2/6, 3/6, 4/6, 5/6))
-soil_0_30cm_shp$class_SOC_0_30cm_5var.quintile <- ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 3.143, 1, ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 3.487, 2, ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 3.675, 3, ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 3.880, 4, ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 4.147, 5))))
+soil_0_30cm_shp$class_SOC_0_30cm_5var.sectile <- ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 3.143, 1, ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 3.487, 2, ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 3.675, 3, ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 3.880, 4, ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 4.147, 5, 6)))))
 
 #quartiles
 soil_0_30cm_shp$class_SOC_0_30cm_5var.quartile <- ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 3.358, 1, ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 3.675, 2, ifelse(soil_0_30cm_shp$SOC_0_30cm_5var.prediction < 4.000, 3, 4))) #breaks are from actual data
@@ -568,6 +574,7 @@ class_2_CI_error <- qnorm(0.975) * class_2_sd / sqrt(class_2_n)
 class_2_CI_error
 
 soil_0_30cm_shp$class_3 <- kmeans_cluster(3, c('NDVI_2017mean_1m_norm', 'curvature_mean_norm'))
+round(30*(tabulate(soil_0_30cm_shp$class_3) /105), 1)
 table(soil_0_30cm_shp$class_3)
 tapply(soil_0_30cm_shp$kgOrgC.m2, soil_0_30cm_shp$class_3, summary)
 class_3_means <- as.numeric(tapply(soil_0_30cm_shp$kgOrgC.m2, soil_0_30cm_shp$class_3, mean))
@@ -799,13 +806,25 @@ round(10*(tabulate(soil_0_30cm_shp$class_3) /105), 1)
 strat10_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(4, 5, 1)))
 calculate_thresholds(strat10_class3, 10000) #0.9999 0.9519 0.6784
 
+round(12*(tabulate(soil_0_30cm_shp$class_3) /105), 1)
+strat12_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(5, 6, 1)))
+calculate_thresholds(strat12_class3, 10000) #0.9999 0.9519 0.6784
+
 round(15*(tabulate(soil_0_30cm_shp$class_3) /105), 1)
 strat15_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(6, 7, 2)))
 calculate_thresholds(strat15_class3, 10000) #1.0000 0.9897 0.7916
 
+round(18*(tabulate(soil_0_30cm_shp$class_3) /105), 1)
+strat18_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(7, 9, 2)))
+calculate_thresholds(strat18_class3, 10000)
+
 round(20*(tabulate(soil_0_30cm_shp$class_3) /105), 1)
 strat20_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(8, 10, 2)))
 calculate_thresholds(strat20_class3, 10000) #1.0000 0.9972 0.8629
+
+round(21*(tabulate(soil_0_30cm_shp$class_3) /105), 1)
+strat21_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(9, 10, 2)))
+calculate_thresholds(strat21_class3, 10000)
 
 round(24*(tabulate(soil_0_30cm_shp$class_3) /105), 1)
 strat24_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(10, 11, 3)))
@@ -814,6 +833,10 @@ calculate_thresholds(strat24_class3, 10000) #1.0000 0.9996 0.9067
 round(25*(tabulate(soil_0_30cm_shp$class_3) /105), 1)
 strat25_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(10, 12, 3)))
 calculate_thresholds(strat25_class3, 10000) #1.0000 0.9990 0.9114
+
+round(27*(tabulate(soil_0_30cm_shp$class_3) /105), 1)
+strat27_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(11, 13, 3)))
+calculate_thresholds(strat27_class3, 10000) #1.0000 0.9996 0.9067
 
 round(30*(tabulate(soil_0_30cm_shp$class_3) /105), 1)
 strat30_class3 <- replicate(10000, calc_strat_mean_v2(3, 3, c(13, 14, 3)))
@@ -1033,6 +1056,27 @@ calc_strat_mean_v3 <- function(class_no, classes, sample_no_total) {
   }
   sum(results)
 }
+#5 var predictions classified into 5 groups based on the prediction quartiles (21 in 1 to 5, respectively)
+tapply(soil_0_30cm_shp$kgOrgC.m2, soil_0_30cm_shp$class_SOC_0_30cm_5var.quintile, summary)
+table(soil_0_30cm_shp$class_SOC_0_30cm_5var.quintile)
+strat5_classSOC30_5var.quintile<- replicate(10000, calc_strat_mean_v3('SOC_0_30cm_5var.quintile', 5, 5))
+calculate_thresholds(strat5_classSOC30_5var.quintile, 10000) #0.9972 0.8894 0.5871
+
+strat10_classSOC30_5var.quintile<- replicate(10000, calc_strat_mean_v3('SOC_0_30cm_5var.quintile', 5, 10))
+calculate_thresholds(strat10_classSOC30_5var.quintile, 10000)
+
+strat15_classSOC30_5var.quintile<- replicate(10000, calc_strat_mean_v3('SOC_0_30cm_5var.quintile', 5, 15))
+calculate_thresholds(strat15_classSOC30_5var.quintile, 10000)
+
+strat20_classSOC30_5var.quintile<- replicate(10000, calc_strat_mean_v3('SOC_0_30cm_5var.quintile', 5, 20))
+calculate_thresholds(strat20_classSOC30_5var.quintile, 10000) #20 achieves 5% accuracy #  1.0000 0.9993 0.9109
+
+strat24_classSOC30_5var.quintile<- replicate(10000, calc_strat_mean_v3('SOC_0_30cm_5var.quintile', 4, 24))
+calculate_thresholds(strat24_classSOC30_5var.quintile, 10000)
+
+strat28_classSOC30_5var.quintile<- replicate(10000, calc_strat_mean_v3('SOC_0_30cm_5var.quintile', 4, 28))
+calculate_thresholds(strat28_classSOC30_5var.quintile, 10000)
+
 #5 var predictions classified into 4 groups based on the prediction quartiles (26, 26, 26, and 27 in 1 to 4, respectively)
 soil_0_30cm_shp$class_SOC_0_30cm_5var.quartile
 strat2_classSOC30_5var.quartile<- replicate(10000, calc_strat_mean_v3('SOC_0_30cm_5var.quartile', 4, 2))
@@ -1183,9 +1227,21 @@ results_2class_2var <- data.frame(n=c(2:10, 15, 20, 25, 30), do.call(rbind, lapp
 colnames(results_2class_2var)[2:4] <- c('prob_20%', 'prob_10%', 'prob_5%')
 results_2class_2var
 
-results_3class_2var <- data.frame(n=c(3:10, 15, 20, 25, 30), do.call(rbind, lapply(list(strat3_class3, strat4_class3, strat5_class3, strat6_class3, strat7_class3, strat8_class3, strat9_class3, strat10_class3, strat15_class3, strat20_class3, strat25_class3, strat30_class3), calculate_thresholds,  iterations=10000)))
+results_3class_2var <- data.frame(n=seq(3, 30, 3), do.call(rbind, lapply(list(strat3_class3, strat6_class3, strat9_class3, strat12_class3, strat15_class3, strat18_class3, strat21_class3, strat24_class3, strat27_class3, strat30_class3), calculate_thresholds,  iterations=10000)))
 colnames(results_3class_2var)[2:4] <- c('prob_20%', 'prob_10%', 'prob_5%')
 results_3class_2var
+
+# results_3class_2var <- data.frame(n=c(3:10, 15, 20, 25, 30), do.call(rbind, lapply(list(strat3_class3, strat4_class3, strat5_class3, strat6_class3, strat7_class3, strat8_class3, strat9_class3, strat10_class3, strat15_class3, strat20_class3, strat25_class3, strat30_class3), calculate_thresholds,  iterations=10000)))
+# colnames(results_3class_2var)[2:4] <- c('prob_20%', 'prob_10%', 'prob_5%')
+# results_3class_2var
+
+results_3class_MLR.5var <- data.frame(n=seq(from=3, to=30, by=3), do.call(rbind, lapply(list(strat3_classSOC30_5var.terciles, strat6_classSOC30_5var.terciles, strat9_classSOC30_5var.terciles, strat12_classSOC30_5var.quartile, strat15_classSOC30_5var.terciles, strat18_classSOC30_5var.terciles, strat21_classSOC30_5var.terciles, strat24_classSOC30_5var.terciles, strat27_classSOC30_5var.terciles, strat30_classSOC30_5var.terciles), calculate_thresholds,  iterations=10000)))
+colnames(results_3class_MLR.5var)[2:4] <- c('prob_20%', 'prob_10%', 'prob_5%')
+results_3class_MLR.5var
+
+results_4class_MLR.5var <- data.frame(n=c(4, 8, 12, 16, 20, 24, 28), do.call(rbind, lapply(list(strat4_classSOC30_5var.quartile, strat8_classSOC30_5var.quartile, strat12_classSOC30_5var.quartile, strat16_classSOC30_5var.quartile, strat20_classSOC30_5var.quartile, strat24_classSOC30_5var.quartile, strat28_classSOC30_5var.quartile), calculate_thresholds,  iterations=10000)))
+colnames(results_4class_MLR.5var)[2:4] <- c('prob_20%', 'prob_10%', 'prob_5%')
+results_4class_MLR.5var
 
 results_4class_2var <- data.frame(n=c(4:10, 15, 20, 25, 30), do.call(rbind, lapply(list(strat4_class4, strat5_class4, strat6_class4, strat7_class4, strat8_class4, strat9_class4, strat10_class4, strat15_class4, strat20_class4, strat25_class4, strat30_class4), calculate_thresholds,  iterations=10000)))
 colnames(results_4class_2var)[2:4] <- c('prob_20%', 'prob_10%', 'prob_5%')
@@ -1203,11 +1259,36 @@ results_4class_5var <- data.frame(n=c(4:10, 15, 20, 25, 30), do.call(rbind, lapp
 colnames(results_4class_5var)[2:4] <- c('prob_20%', 'prob_10%', 'prob_5%')
 results_4class_5var
 
-results_random_sampling <- data.frame(n=c(1:10, 15, 20, 25, 30), do.call(rbind, lapply(list(sample_1, sample_2, sample_3, sample_4, sample_5, sample_6, sample_7, sample_8, sample_9, sample_10, sample_15, sample_20, sample_25, sample_30), calculate_thresholds, iterations=10000)))
+results_random_sampling <- data.frame(n=seq(from=3, to=30, by=3), do.call(rbind, lapply(list(sample_3, sample_6, sample_9, sample_12, sample_15, sample_18, sample_21, sample_24, sample_27, sample_30), calculate_thresholds, iterations=10000)))
 colnames(results_random_sampling)[2:4] <- c('prob_20%', 'prob_10%', 'prob_5%')
 results_random_sampling
 
-#2 and 3 class comparison with random using 2 vars
+#results_random_sampling <- data.frame(n=c(1:10, 15, 20, 25, 30), do.call(rbind, lapply(list(sample_1, sample_2, sample_3, sample_4, sample_5, sample_6, sample_7, sample_8, sample_9, sample_10, sample_15, sample_20, sample_25, sample_30), calculate_thresholds, iterations=10000)))
+#colnames(results_random_sampling)[2:4] <- c('prob_20%', 'prob_10%', 'prob_5%')
+#results_random_sampling
+
+#3 class unsupervised strartification using 2 vars vs. 4 class MLR.5var vs.  random
+tiff(file = file.path(FiguresDir, 'random_vs_strat_Fig8.tif', sep = ''), family = 'Times New Roman', width = 4.5, height = 4.5, pointsize = 11, units = 'in', res=150)
+par(mar=c(4.5, 4.5, 1, 1))
+plot(results_random_sampling$n, results_random_sampling$`prob_5%`, ylim=c(0, 1), xlab='', ylab='', type='b', col='lightgrey', lty=1, pch=1)
+lines(results_random_sampling$n, results_random_sampling$`prob_10%`, type='b', pch=3, col='lightgrey', lty=2)
+lines(results_random_sampling$n, results_random_sampling$`prob_20%`, type='b', pch=16, col='lightgrey', lty=3)
+lines(results_3class_2var$n, results_3class_2var$`prob_5%`, type='b', col='black', lty=1, pch=1)
+lines(results_3class_2var$n, results_3class_2var$`prob_10%`, type='b', col='black', lty=2, pch=3)
+lines(results_3class_2var$n, results_3class_2var$`prob_20%`, type='b', col='black', lty=3, pch=16)
+lines(results_3class_MLR.5var$n, results_3class_MLR.5var$`prob_5%`, type='b', col='brown', lty=1, pch=1)
+lines(results_3class_MLR.5var$n, results_3class_MLR.5var$`prob_10%`, type='b', col='brown', lty=2, pch=3)
+lines(results_3class_MLR.5var$n, results_3class_MLR.5var$`prob_20%`, type='b', col='brown', lty=3, pch=16)
+#points(x=2, y=calculate_thresholds(strat2_class2, 10000)[1], col='darkgrey', pch = 8)
+#points(x=2, y=calculate_thresholds(strat2_class2, 10000)[2], col='darkgrey', pch = 8)
+#points(x=2, y=calculate_thresholds(strat2_class2, 10000)[3], col='darkgrey', pch = 8)
+mtext(text='number of samples', side=1, line=2.75)
+mtext(text=paste('probability to estimate mean SOC with accuracy of', "\u00B1", 'X%'), side=2, line=2.75)
+legend('bottomright', legend = c('stratified (MLR) ± 20% ', 'stratified (k-means) ± 20%', 'random ± 20%', 'stratified (MLR) ± 10%', 'stratified (k-means) ± 10%', 'random ± 10%', 'stratified (MLR) ± 5%', 'stratified (k-means) ± 5%', 'random ± 5%'), col=c('brown', 'black', 'lightgrey', 'brown', 'black', 'lightgrey', 'brown', 'black', 'lightgrey'), lty=c(3, 3, 3, 2, 2, 2, 1, 1, 1), pch=c(16, 16, 16, 3, 3, 3, 1, 1, 1), inset = 0.05)
+abline(h=0.9, lty=4, col='black')
+dev.off()
+
+#3 class 2 var unsupervised strat
 tiff(file = file.path(FiguresDir, 'random_vs_strat_3class_2var.tif', sep = ''), family = 'Times New Roman', width = 4.5, height = 4.5, pointsize = 11, units = 'in', res=150)
 par(mar=c(4.5, 4.5, 1, 1))
 plot(results_random_sampling$n, results_random_sampling$`prob_5%`, ylim=c(0, 1), xlab='', ylab='', type='b', col='lightgrey', lty=1, pch=1)
@@ -1344,22 +1425,26 @@ rank_test <- function(x, df, y, mtd) {
   colnames(result) <- c(paste0(y, '.p.val.', mtd), paste0(y, if(mtd=='pearson') {'.tau.'} else {'.rho.'}, mtd))
   result
 }
-orgC_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='kgOrgC.m2', mtd='spearman'))
-P_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='gP.m2', mtd='spearman'))
-IC_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='kgIC.m2', mtd='spearman'))
-clay_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='clay_wtd', mtd='spearman'))
-elevation_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='elevation', mtd='spearman'))
-curvmean_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='curvature_mean', mtd='spearman'))
-solrad_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='annual_kwh.m2', mtd='spearman'))
-slope_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='slope', mtd='spearman'))
-NDVI_2017_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='NDVI_2017mean_1m', mtd='spearman'))
-NDVI_2018_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='NDVI_2018mean_1m', mtd='spearman'))
-Red_GS_2017_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='Red_meanGS2017', mtd='spearman'))
-NIR_GS_2017_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='NIR_meanGS2017', mtd='spearman'))
-Red_GS_2018_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='Red_meanGS2018', mtd='spearman'))
-NIR_GS_2018_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='NIR_meanGS2018', mtd='spearman'))
-predictor_corrs <- cbind(orgC_corrs, clay_corrs, IC_corrs, P_corrs, elevation_corrs, curvmean_corrs, solrad_corrs, slope_corrs, NDVI_2017_corrs, NDVI_2018_corrs, Red_GS_2017_corrs, Red_GS_2018_corrs, NIR_GS_2017_corrs, NIR_GS_2018_corrs)
-write.csv(predictor_corrs, file.path(CarbonDir, 'correlations', 'terrain_soil_corrs_0_30cm.csv'), row.names=TRUE)
+soil_0_30cm_shp$kgOrgC.m2_0_10cm <- soil_0_10cm_shp$kgOrgC.m2
+soil_0_30cm_shp$kgOrgC.m2_10_30cm <- soil_10_30cm_shp$kgOrgC.m2
+orgC_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'kgOrgC.m2_0_10cm', 'kgOrgC.m2_10_30cm', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='kgOrgC.m2', mtd='spearman'))
+orgC0_10cm_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'kgOrgC.m2_0_10cm', 'kgOrgC.m2_10_30cm', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='kgOrgC.m2_0_10cm', mtd='spearman'))
+orgC10_30cm_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'kgOrgC.m2_0_10cm', 'kgOrgC.m2_10_30cm', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='kgOrgC.m2_10_30cm', mtd='spearman'))
+P_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'kgOrgC.m2_0_10cm', 'kgOrgC.m2_10_30cm', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='gP.m2', mtd='spearman'))
+IC_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'kgOrgC.m2_0_10cm', 'kgOrgC.m2_10_30cm', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='kgIC.m2', mtd='spearman'))
+clay_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'kgOrgC.m2_0_10cm', 'kgOrgC.m2_10_30cm', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='clay_wtd', mtd='spearman'))
+elevation_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'kgOrgC.m2_0_10cm', 'kgOrgC.m2_10_30cm', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='elevation', mtd='spearman'))
+curvmean_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'kgOrgC.m2_0_10cm', 'kgOrgC.m2_10_30cm', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='curvature_mean', mtd='spearman'))
+solrad_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'kgOrgC.m2_0_10cm', 'kgOrgC.m2_10_30cm', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='annual_kwh.m2', mtd='spearman'))
+slope_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'kgOrgC.m2_0_10cm', 'kgOrgC.m2_10_30cm', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='slope', mtd='spearman'))
+NDVI_2017_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'kgOrgC.m2_0_10cm', 'kgOrgC.m2_10_30cm', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='NDVI_2017mean_1m', mtd='spearman'))
+NDVI_2018_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'kgOrgC.m2_0_10cm', 'kgOrgC.m2_10_30cm', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='NDVI_2018mean_1m', mtd='spearman'))
+Red_GS_2017_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'kgOrgC.m2_0_10cm', 'kgOrgC.m2_10_30cm', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='Red_meanGS2017', mtd='spearman'))
+NIR_GS_2017_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'kgOrgC.m2_0_10cm', 'kgOrgC.m2_10_30cm', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='NIR_meanGS2017', mtd='spearman'))
+Red_GS_2018_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'kgOrgC.m2_0_10cm', 'kgOrgC.m2_10_30cm', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='Red_meanGS2018', mtd='spearman'))
+NIR_GS_2018_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'kgOrgC.m2_0_10cm', 'kgOrgC.m2_10_30cm', 'clay_wtd', 'kgIC.m2', 'gP.m2', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='NIR_meanGS2018', mtd='spearman'))
+predictor_corrs <- cbind(orgC_corrs, orgC0_10cm_corrs, orgC10_30cm_corrs, clay_corrs, IC_corrs, P_corrs, elevation_corrs, curvmean_corrs, solrad_corrs, slope_corrs, NDVI_2017_corrs, NDVI_2018_corrs, Red_GS_2017_corrs, Red_GS_2018_corrs, NIR_GS_2017_corrs, NIR_GS_2018_corrs)
+write.csv(predictor_corrs, file.path(CarbonDir, 'correlations', 'terrain_soil_corrs_0_30cm_orgCalldepths.csv'), row.names=TRUE)
 
 #make plots of direct associations
 tiff(file = file.path(FiguresDir, 'clay_vs_orgC_0_30cm.tif', sep = ''), family = 'Times New Roman', width = 3.5, height = 3.5, pointsize = 11, units = 'in', res=150)
@@ -1525,7 +1610,8 @@ soilP_10_30_rmse_null <- crossval_null(soil_10_30cm_shp, 'gP.m2')
 #map organic carbon 0-30 cm
 #5 var model
 lm_terrain5_0_30cm <- lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + elevation + NDVI_2017mean_1m, data =  soil_0_30cm_shp)
-kgOrgC.m2_terrain5_0_30cm <- predict(Mar2017_terrain_3m_cropped, lm_terrain5_0_30cm, filename=file.path(FiguresDir, 'kgOrgC_m2_MLRbest5var_0_30cm_FINAL.tif'), overwrite=TRUE)
+kgOrgC.m2_terrain5_0_30cm <- predict(Mar2017_terrain_3m_cropped, lm_terrain5_0_30cm)#, filename=file.path(FiguresDir, 'kgOrgC_m2_MLRbest5var_0_30cm_FINAL.tif'), overwrite=TRUE)
+quantile(kgOrgC.m2_terrain5_0_30cm)
 plot(kgOrgC.m2_terrain5_0_30cm)
 plot(soil_0_30cm_shp, add=TRUE)
 soil_0_30cm_shp$kgOrgC.m2_lm.terrain5 <- extract(kgOrgC.m2_terrain5_0_30cm, soil_0_30cm_shp)
@@ -1533,7 +1619,8 @@ summary(lm(kgOrgC.m2 ~ kgOrgC.m2_lm.terrain5, data = soil_0_30cm_shp))
 soil_0_30cm_shp$kgOrgC.m2_5var_residuals <- lm_terrain5_0_30cm$residuals
 #2 var model
 lm_terrain2_0_30cm <- lm(kgOrgC.m2 ~ curvature_mean + NDVI_2017mean_1m, data =  soil_0_30cm_shp)
-kgOrgC.m2_terrain2_0_30cm <- predict(Mar2017_terrain_3m_cropped, lm_terrain2_0_30cm, filename=file.path(FiguresDir, 'kgOrgC_m2_MLRbest2var_0_30cm_FINAL.tif'), overwrite=TRUE)
+kgOrgC.m2_terrain2_0_30cm <- predict(Mar2017_terrain_3m_cropped, lm_terrain2_0_30cm)#, filename=file.path(FiguresDir, 'kgOrgC_m2_MLRbest2var_0_30cm_FINAL.tif'), overwrite=TRUE)
+quantile(kgOrgC.m2_terrain2_0_30cm)
 plot(kgOrgC.m2_terrain2_0_30cm)
 soil_0_30cm_shp$kgOrgC.m2_lm.terrain2 <- extract(kgOrgC.m2_terrain2_0_30cm, soil_0_30cm_shp)
 summary(lm(kgOrgC.m2 ~ kgOrgC.m2_lm.terrain2, data = soil_0_30cm_shp))
