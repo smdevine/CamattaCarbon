@@ -47,7 +47,7 @@ soilCtotN[duplicated_samples, c('sample.ID', 'totC.percent', 'totN.percent', 'tr
 soilCtotN[soilCtotN$sample.ID=='72_1',] #1-B10, 1-C6 were erroneous, all others OK; verified 12/1/18
 soilCtotN <- soilCtotN[-which(soilCtotN$tray.ID=='1-B10'), ]
 soilCtotN <- soilCtotN[-which(soilCtotN$tray.ID=='1-C6'), ]
-dim(soilCtotN) #230 now
+dim(soilCtotN) #229 now
 dim(soilCorgN) #264 from draft dataset
 length(unique(soilCorgN$sample.ID)) #210 unique as expected
 soilCorgN$orgC.percent <- round(100 * soilCorgN$C.mg / soilCorgN$mass.mg, 3)
@@ -73,7 +73,7 @@ soilCorgN <- soilCorgN[-which(soilCorgN$tray.ID.OC=='6-D7'),] #total N way off c
 soilCorgN <- soilCorgN[-which(soilCorgN$tray.ID.OC=='6-D5'),]
 soilCorgN <- soilCorgN[-which(soilCorgN$tray.ID.OC=='4-D1'),]
 soilCorgN$orgC.percent[soilCorgN$sample.ID=='79_1'] <- NA #concluded that this analysis was erroneous; will base organic C estimate as avg% of total C estimate from adjancent points which all had 46-77% of total C
-soilCorgN$totN.percent.v2[soilCorgN$sample.ID=='79_1'] <- NA
+#soilCorgN$totN.percent.v2[soilCorgN$sample.ID=='79_1'] <- NA
 soilC_all <- merge(soilCtotN[,c('sample.ID', 'tray.ID.TC', 'totC.percent', 'totN.percent')], soilCorgN[ ,c('sample.ID', 'tray.ID.OC', 'orgC.percent', 'totN.percent.v2')], by='sample.ID') #W in org C samples denoted those that had not been dried at 60C first before immediately weighing !grepl('W', soilCorgN$sample.ID)
 dim(soilC_all) #294 rows
 length(unique(soilC_all$sample.ID)) #210 unique as expected
@@ -145,7 +145,7 @@ summary(soilC_all$CaCO3.percent)
 colnames(soilC_all)
 soilC_0_10cm <- soilC_all[grepl('_1', soilC_all$sample.ID), c("sample.ID", "totC.percent", "totN.percent", "orgC.percent", "totN.percent.v2", "inorgC.percent", "orgC.to.totC", "CaCO3.percent", 'N.error.percent')]
 soilC_0_10cm[which(soilC_0_10cm$sample.ID %in% soilC_0_10cm$sample.ID[duplicated(soilC_0_10cm$sample.ID)]),]
-soilC_0_10cm <- data.frame(sample.ID=unique(soilC_0_10cm$sample.ID), totC.percent=as.numeric(tapply(soilC_0_10cm$totC.percent, soilC_0_10cm$sample.ID, mean)), totN.percent=as.numeric(tapply(soilC_0_10cm$totN.percent, soilC_0_10cm$sample.ID, mean)), orgC.percent=as.numeric(tapply(soilC_0_10cm$orgC.percent, soilC_0_10cm$sample.ID, mean)), inorgC.percent=as.numeric(tapply(soilC_0_10cm$inorgC.percent, soilC_0_10cm$sample.ID, mean)), CaCO3.percent=as.numeric(tapply(soilC_0_10cm$CaCO3.percent, soilC_0_10cm$sample.ID, mean)), orgC.to.totC=as.numeric(tapply(soilC_0_10cm$orgC.to.totC, soilC_0_10cm$sample.ID, mean)), N.error.percent=as.numeric(tapply(soilC_0_10cm$N.error.percent, soilC_0_10cm$sample.ID, mean)))
+soilC_0_10cm <- data.frame(sample.ID=unique(soilC_0_10cm$sample.ID), totC.percent=as.numeric(tapply(soilC_0_10cm$totC.percent, soilC_0_10cm$sample.ID, mean)), totN.percent=as.numeric(tapply(soilC_0_10cm$totN.percent, soilC_0_10cm$sample.ID, mean)), orgC.percent=as.numeric(tapply(soilC_0_10cm$orgC.percent, soilC_0_10cm$sample.ID, mean)), inorgC.percent=as.numeric(tapply(soilC_0_10cm$inorgC.percent, soilC_0_10cm$sample.ID, mean)), CaCO3.percent=as.numeric(tapply(soilC_0_10cm$CaCO3.percent, soilC_0_10cm$sample.ID, mean)), orgC.to.totC=as.numeric(tapply(soilC_0_10cm$orgC.to.totC, soilC_0_10cm$sample.ID, mean)), N.error.percent=as.numeric(tapply(soilC_0_10cm$N.error.percent, soilC_0_10cm$sample.ID, mean)), totN.percent.acidified=as.numeric(tapply(soilC_0_10cm$totN.percent.v2, soilC_0_10cm$sample.ID, mean)))
 sum(soilC_0_10cm$inorgC.percent < 0, na.rm=TRUE) #4 were negative, meaning no detectable carbonates
 soilC_0_10cm$inorgC.percent[soilC_0_10cm$inorgC.percent < 0] <- 0 
 soilC_0_10cm$CaCO3.percent[soilC_0_10cm$CaCO3.percent < 0] <- 0
@@ -159,7 +159,7 @@ soilC_0_10cm$CaCO3.percent[soilC_0_10cm$sample.ID=='79_1'] <- round((100/12) * s
 soilC_0_10cm$orgC.percent[soilC_0_10cm$orgC.percent > soilC_0_10cm$totC.percent] <- soilC_0_10cm$totC.percent[soilC_0_10cm$orgC.percent > soilC_0_10cm$totC.percent]
 #now soilC_10_30cm
 soilC_10_30cm <- soilC_all[grepl('_2', soilC_all$sample.ID), ]
-soilC_10_30cm <- data.frame(sample.ID=unique(soilC_10_30cm$sample.ID), totC.percent=as.numeric(tapply(soilC_10_30cm$totC.percent, soilC_10_30cm$sample.ID, mean)), totN.percent=as.numeric(tapply(soilC_10_30cm$totN.percent, soilC_10_30cm$sample.ID, mean)), orgC.percent=as.numeric(tapply(soilC_10_30cm$orgC.percent, soilC_10_30cm$sample.ID, mean)), inorgC.percent=as.numeric(tapply(soilC_10_30cm$inorgC.percent, soilC_10_30cm$sample.ID, mean)), CaCO3.percent=as.numeric(tapply(soilC_10_30cm$CaCO3.percent, soilC_10_30cm$sample.ID, mean)), orgC.to.totC=as.numeric(tapply(soilC_10_30cm$orgC.to.totC, soilC_10_30cm$sample.ID, mean)), N.error.percent=as.numeric(tapply(soilC_10_30cm$N.error.percent, soilC_10_30cm$sample.ID, mean)))
+soilC_10_30cm <- data.frame(sample.ID=unique(soilC_10_30cm$sample.ID), totC.percent=as.numeric(tapply(soilC_10_30cm$totC.percent, soilC_10_30cm$sample.ID, mean)), totN.percent=as.numeric(tapply(soilC_10_30cm$totN.percent, soilC_10_30cm$sample.ID, mean)), orgC.percent=as.numeric(tapply(soilC_10_30cm$orgC.percent, soilC_10_30cm$sample.ID, mean)), inorgC.percent=as.numeric(tapply(soilC_10_30cm$inorgC.percent, soilC_10_30cm$sample.ID, mean)), CaCO3.percent=as.numeric(tapply(soilC_10_30cm$CaCO3.percent, soilC_10_30cm$sample.ID, mean)), orgC.to.totC=as.numeric(tapply(soilC_10_30cm$orgC.to.totC, soilC_10_30cm$sample.ID, mean)), N.error.percent=as.numeric(tapply(soilC_10_30cm$N.error.percent, soilC_10_30cm$sample.ID, mean)), totN.percent.acidified=as.numeric(tapply(soilC_10_30cm$totN.percent.v2, soilC_10_30cm$sample.ID, mean)))
 sum(soilC_10_30cm$inorgC.percent < 0)
 soilC_10_30cm$inorgC.percent[soilC_10_30cm$inorgC.percent < 0] <- 0 #2 samples had undetectable levels of carbonates
 soilC_10_30cm$CaCO3.percent[soilC_10_30cm$CaCO3.percent < 0] <- 0
@@ -180,14 +180,27 @@ dim(soilC_10_30cm)
 length(unique(soilC_0_10cm$sample.ID))
 tapply(soilC_0_10cm$totC.percent, soilC_0_10cm$sample.ID, length) #57_1 and 58_1 are reps
 hist(soilC_10_30cm$orgC.percent)
-write.csv(soilC_0_10cm, file.path(soilCresults, 'soilC_0_10cm_Camatta.csv'), row.names = FALSE)
-write.csv(soilC_10_30cm, file.path(soilCresults, 'soilC_10_30cm_Camatta.csv'), row.names = FALSE)
+#write.csv(soilC_0_10cm, file.path(soilCresults, 'soilC_0_10cm_Camatta.csv'), row.names = FALSE)
+#write.csv(soilC_10_30cm, file.path(soilCresults, 'soilC_10_30cm_Camatta.csv'), row.names = FALSE)
 soilC_0_10cm <- read.csv(file.path(soilCresults, 'soilC_0_10cm_Camatta.csv'), stringsAsFactors = FALSE)
 soilC_10_30cm <- read.csv(file.path(soilCresults, 'soilC_10_30cm_Camatta.csv'), stringsAsFactors = FALSE)
 dim(soilC_0_10cm)
 dim(soilC_10_30cm)
 sum(soilC_0_10cm$orgC.percent > soilC_0_10cm$totC.percent) #0
 sum(soilC_10_30cm$orgC.percent > soilC_10_30cm$totC.percent) #0
+#check difference between mean N from acidified and whole soil
+summary(soilC_0_10cm$totN.percent)
+summary(soilC_0_10cm$totN.percent.acidified)
+summary(soilC_10_30cm$totN.percent)
+summary(soilC_10_30cm$totN.percent.acidified)
+colnames(soilC_0_10cm)
+t.test(x=soilC_0_10cm$totN.percent, y=soilC_0_10cm$totN.percent.acidified, paired = TRUE)
+summary(lm(soilC_0_10cm$totN.percent ~ soilC_0_10cm$totN.percent.acidified))
+plot(soilC_0_10cm$totN.percent, soilC_0_10cm$totN.percent.acidified)
+text(soilC_0_10cm$totN.percent, soilC_0_10cm$totN.percent.acidified, labels = soilC_0_10cm$sample.ID, pos=1, offset = 0.1)
+t.test(x=soilC_10_30cm$totN.percent, y=soilC_10_30cm$totN.percent.acidified, paired = TRUE)
+
+
 
 #read in bulk density data
 #read-in BD_data
@@ -273,7 +286,7 @@ summary(lm(kgOrgC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation + kgCl
 summary(lm(kgOrgC.m2 ~ slope + curvature_mean + kgClay.m2, data=as.data.frame(soil_10_30cm_shp))) #r^2=0.43 p.val < 0.001; all params sig
 summary(lm(kgOrgC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation + WMPD_mm, data=as.data.frame(soil_10_30cm_shp))) #r^2=0.53
 shapefile(soil_10_30cm_shp, file.path(soilCresults, 'shapefiles', 'soil_10_30cm.shp'), overwrite=TRUE)
-write.csv(as.data.frame(soil_10_30cm_shp), file.path(soilCresults, 'shapefiles', 'soil_10_30cm_df.csv'), row.names = FALSE)
+#write.csv(as.data.frame(soil_10_30cm_shp), file.path(soilCresults, 'shapefiles', 'soil_10_30cm_df.csv'), row.names = FALSE)
 
 #now 0_10 since points 2 and 3 will depend on 10_30 data
 soil_0_10cm_shp <- merge(sampling_pts, soilC_0_10cm, by='point_no')
@@ -325,7 +338,7 @@ summary(lm(kgOrgC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation + kgCl
 summary(lm(kgOrgC.m2 ~ slope + curvature_mean + kgClay.m2, data=as.data.frame(soil_0_10cm_shp))) #r^2=0.21 p.val < 0.001; all params sig
 summary(lm(kgOrgC.m2 ~ slope + annual_kwh.m2 + curvature_mean + elevation + WMPD_mm, data=as.data.frame(soil_0_10cm_shp))) #r^2=0.24
 shapefile(soil_0_10cm_shp, file.path(soilCresults, 'shapefiles', 'soil_0_10cm.shp'), overwrite=TRUE)
-write.csv(as.data.frame(soil_0_10cm_shp), file.path(soilCresults, 'shapefiles', 'soil_0_10cm_df.csv'), row.names = FALSE)
+#write.csv(as.data.frame(soil_0_10cm_shp), file.path(soilCresults, 'shapefiles', 'soil_0_10cm_df.csv'), row.names = FALSE)
 hist(soil_0_10cm_shp$kgOrgC.m2)
 plot(soil_0_10cm_shp, cex=soil_0_10cm_shp$kgOrgC.m2/2, pch=2, col=soil_0_10cm_shp$energy_colors)
 text(soil_0_10cm_shp, labels=soil_0_10cm_shp$point_no, offset=0.2, pos=1)
@@ -379,5 +392,5 @@ plot(lm(kgOrgC.m2 ~ curvature_mean + elevation + slope+ annual_kwh.m2 + WMPD_mm,
 orgC_lm <- lm(kgOrgC.m2 ~ curvature_mean + elevation + slope+ annual_kwh.m2 + WMPD_mm, data=soil_0_30cm_shp)
 summary(lm(kgOrgC.m2 ~ curvature_mean + elevation + slope+ annual_kwh.m2 + kgClay.m2, data=soil_0_30cm_shp))
 summary(lm(kgIC.m2 ~ curvature_mean + elevation + slope+ annual_kwh.m2 + kgClay.m2, data=soil_0_30cm_shp))
-write.csv(as.data.frame(soil_0_30cm_shp), file.path(soilCresults, 'shapefiles', 'soil_0_30cm_df.csv'), row.names = FALSE)
+#write.csv(as.data.frame(soil_0_30cm_shp), file.path(soilCresults, 'shapefiles', 'soil_0_30cm_df.csv'), row.names = FALSE)
 shapefile(soil_0_30cm_shp, file.path(soilCresults, 'shapefiles', 'soil_0_30cm.shp'), overwrite=TRUE)
