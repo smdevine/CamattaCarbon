@@ -75,7 +75,7 @@ NDVIMar2018_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[ ,c("ND
 NDVIApr2018_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[ ,c("NDVI_Jan2017mean_1m", "NDVI_Feb2017mean_1m", "NDVI_Mar2017mean_1m", "NDVI_Apr2017mean_1m", "NDVI_May2017mean_1m", "NDVI_Jan2018mean_1m", "NDVI_Feb2018mean_1m", "NDVI_Mar2018mean_1m", "NDVI_Apr2018mean_1m")]), rank_test, df=soil_0_30cm_shp, y='NDVI_Apr2018mean_1m', mtd=mtd_corr))
 #bind 'em
 NDVI_corrs <- cbind(NDVIJan2017_corrs, NDVIFeb2017_corrs, NDVIMar2017_corrs, NDVIApr2017_corrs, NDVIMay2017_corrs, NDVIJan2018_corrs, NDVIFeb2018_corrs, NDVIMar2018_corrs, NDVIApr2018_corrs)
-write.csv(NDVI_corrs, file.path(modelResults, 'correlations', 'NDVI_pearson_corr_matrix.csv'), row.names=TRUE)
+write.csv(NDVI_corrs, file.path(modelResults, 'correlations', paste0('NDVI_corr_matrix_', mtd_corr, '.csv')), row.names=TRUE)
 
 #now soil properties
 soil_0_30cm_shp$kgOrgC.m2_0_10cm <- soil_0_10cm_shp$kgOrgC.m2
@@ -98,4 +98,4 @@ NIR_GS_2017_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgO
 Red_GS_2018_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'kgOrgC.m2_0_10cm', 'kgOrgC.m2_10_30cm', 'clay_wtd', 'kgIC.m2', 'bulk_density_g_cm3', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='Red_meanGS2018', mtd=mtd_corr))
 NIR_GS_2018_corrs <- do.call(rbind, lapply(as.data.frame(soil_0_30cm_shp[,c('kgOrgC.m2', 'kgOrgC.m2_0_10cm', 'kgOrgC.m2_10_30cm', 'clay_wtd', 'kgIC.m2', 'bulk_density_g_cm3', 'elevation', 'curvature_mean', 'annual_kwh.m2', 'slope', 'NDVI_2017mean_1m', 'NDVI_2018mean_1m', 'Red_meanGS2017', 'Red_meanGS2018', 'NIR_meanGS2017', 'NIR_meanGS2018')]), rank_test, df=soil_0_30cm_shp, y='NIR_meanGS2018', mtd=mtd_corr))
 predictor_corrs <- cbind(orgC_corrs, orgC0_10cm_corrs, orgC10_30cm_corrs, clay_corrs, IC_corrs, BD_corrs, elevation_corrs, curvmean_corrs, solrad_corrs, slope_corrs, NDVI_2017_corrs, NDVI_2018_corrs, Red_GS_2017_corrs, Red_GS_2018_corrs, NIR_GS_2017_corrs, NIR_GS_2018_corrs)
-write.csv(predictor_corrs, file.path(modelResults, 'terrain_soil_corrs_0_30cm_orgCalldepths.csv'), row.names=TRUE) #last version replaced P corrs with bulk density
+write.csv(predictor_corrs, file.path(modelResults, 'correlations', paste0('terrain_soil_corrs_', mtd_corr ,'.csv')), row.names=TRUE) #last version replaced P corrs with bulk density
