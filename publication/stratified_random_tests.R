@@ -1,17 +1,8 @@
-#TO-DO: (1) clean-up directories that aren't needed (2) write results to 
 #version 1 of this is embedded in the behemoth, soilC_spatial.R
-mainDir <- 'C:/Users/smdevine/Desktop/rangeland project'
 terrainDir <- 'C:/Users/smdevine/Desktop/rangeland project/terrain_analysis_r_v3'
 solradDir <- 'C:/Users/smdevine/Desktop/rangeland project/SoilCarbonProject/solrad_analysis'
-soilCDir <- 'C:/Users/smdevine/Desktop/rangeland project/soils_data/soil C'
-soilDataDir <- 'C:/Users/smdevine/Desktop/rangeland project/soils_data'
 soilCresults <- 'C:/Users/smdevine/Desktop/rangeland project/SoilCarbonProject/soilCresults'
-spatialforageDir <- 'C:/Users/smdevine/Desktop/rangeland project/clip_plots/results'
-forageDir <- 'C:/Users/smdevine/Desktop/rangeland project/clip_plots'
-#0_30 dataset
-modelResults <- 'C:/Users/smdevine/Desktop/rangeland project/SoilCarbonProject/model_results'
 FiguresDir <- 'C:/Users/smdevine/Desktop/rangeland project/SoilCarbonProject/Geoderma publication/Figures'
-CarbonDir <- 'C:/Users/smdevine/Desktop/rangeland project/SoilCarbonProject'
 ResultsDir <- 'C:/Users/smdevine/Desktop/rangeland project/SoilCarbonProject/Geoderma publication/analysis/stratified random tests'
 NDVIDir <- 'C:/Users/smdevine/Desktop/rangeland project/SoilCarbonProject/NDVI'
 library(extrafont)
@@ -51,15 +42,17 @@ calc_rand_mean <- function(n) {
 iterate_rand_mean <- function(iterations, n) {
   replicate(iterations, calc_rand_mean(n))
 }
-kmeans_cluster <- function(classes, vars) {
+kmeans_cluster <- function(classes, vars, writetofile=FALSE) {
   km.out.norm <- kmeans(na.omit(terrain_features_3m_df_norm[,vars]), classes) #verified this omits all rows where any var is NA
   catch_clusters <- rep(NA, nrow(terrain_features_3m_df_norm))
   catch_clusters[!is.na(terrain_features_3m_df_norm$NDVI_2017mean_1m_norm)] <- km.out.norm$cluster
   #Mar2017_terrain_3m_cropped$climate_cluster <- catch_clusters
   raster_object <- raster(extent(Mar2017_terrain_3m_cropped), resolution=res(Mar2017_terrain_3m_cropped), crs=crs(Mar2017_terrain_3m_cropped))
   catch_clusters <- setValues(raster_object, catch_clusters)
-  #writeRaster(catch_clusters, filename = file.path(FiguresDir, 'cluster_rasters', paste0('cluster', classes, '_', length(vars), 'vars.tif')))
-  plot(catch_clusters)
+  if(writetofile) {
+    writeRaster(catch_clusters, filename = file.path(FiguresDir, paste0('cluster', classes, '_', length(vars), 'vars.tif')))
+  }
+  #plot(catch_clusters)
   cluster_ID <- extract(catch_clusters, soil_0_30cm_shp)
   cluster_ID
 }
@@ -154,6 +147,7 @@ terrain_features_3m_df_norm <- as.data.frame(lapply(terrain_features_3m_df, func
 colnames(terrain_features_3m_df_norm) <- c('curvature_mean_norm', 'elevation_norm', 'slope_norm', 'annual_kwh.m2_norm', 'NDVI_2017mean_1m_norm')
 
 #2-var unsupervised classification
+
 soil_0_30cm_shp$class_2 <- kmeans_cluster(2, c('NDVI_2017mean_1m_norm', 'curvature_mean_norm'))
 table(soil_0_30cm_shp$class_2)
 tapply(soil_0_30cm_shp$kgOrgC.m2, soil_0_30cm_shp$class_2, summary)
@@ -163,6 +157,7 @@ class_2_sd <- as.numeric(tapply(soil_0_30cm_shp$kgOrgC.m2, soil_0_30cm_shp$class
 class_2_n <- as.numeric(table(soil_0_30cm_shp$class_2))
 class_2_CI_error <- qnorm(0.975) * class_2_sd / sqrt(class_2_n)
 class_2_CI_error
+
 
 soil_0_30cm_shp$class_3 <- kmeans_cluster(3, c('NDVI_2017mean_1m_norm', 'curvature_mean_norm'))
 round(30*(tabulate(soil_0_30cm_shp$class_3) /105), 1)
