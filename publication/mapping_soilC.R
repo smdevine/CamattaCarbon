@@ -63,12 +63,16 @@ round(quantile(kgOrgC.m2_terrain2_0_30cm), 2)
 #   0%   25%   50%   75%  100% 
 #-0.44  3.24  3.60  3.92  5.01
 # plot(kgOrgC.m2_terrain2_0_30cm)
+sum(kgOrgC.m2_terrain2_0_30cm < 0) #not sure why this doesn't work anymore
+predictions_2var <- getValues(kgOrgC.m2_terrain2_0_30cm)
+sum(predictions_2var < 0, na.rm = TRUE) #only one negative value
 
 #do the same mapping for 0-10 cm layer
 lm_terrain5_0_10cm <- lm(kgOrgC.m2 ~ curvature_mean + slope + annual_kwh.m2 + elevation + NDVI_2017mean_1m, data =  soil_0_10cm_shp)
 summary(lm_terrain5_0_10cm)
 kgOrgC.m2_terrain5_0_10cm <- predict(Mar2017_terrain_3m_cropped, lm_terrain5_0_10cm, filename=file.path(FiguresDir, 'Appendices', 'kgOrgC_m2_MLRbest5var_0_10cm_FINAL.tif'))
 # plot(kgOrgC.m2_terrain5_0_10cm)
+
 
 #do the same mapping for 10-30 cm layer
 #need to get NIR into covariate stack
