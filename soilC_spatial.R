@@ -429,16 +429,19 @@ summary(lm(Rededge_meanGS2017 ~ NIR_meanGS2017, data = soil_0_30cm_df)) #r2=0.7
 summary(lm(Rededge_meanGS2018 ~ NIR_meanGS2018, data = soil_0_30cm_df)) #r2=0.83
 
 #fix 0-30 cm weighting scheme for texture, BD
-sum(soil_0_10cm_shp$point_no - soil_10_30cm_shp$point_no) #check again that location order is the same in each dataset
-sum(soil_0_10cm_shp$point_no - soil_0_30cm_shp$point_no)
-soil_0_30cm_shp$orgC.percent <- soil_0_10cm_shp$orgC.percent * (soil_0_10cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD)) + soil_10_30cm_shp$orgC.percent * (soil_10_30cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD))
-soil_0_30cm_shp$bulk_density_g_cm3 <- soil_0_10cm_shp$bulk_density_g_cm3 * (soil_0_10cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD)) + soil_10_30cm_shp$bulk_density_g_cm3 * (soil_10_30cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD))
-soil_0_30cm_shp$PH <- soil_0_10cm_shp$PH * (soil_0_10cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD)) + soil_10_30cm_shp$PH * (soil_10_30cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD))
+# sum(soil_0_10cm_shp$point_no - soil_10_30cm_shp$point_no) #check again that location order is the same in each dataset
+# sum(soil_0_10cm_shp$point_no - soil_0_30cm_shp$point_no)
+# soil_0_30cm_shp$orgC.percent <- soil_0_10cm_shp$orgC.percent * (soil_0_10cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD)) + soil_10_30cm_shp$orgC.percent * (soil_10_30cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD))
+# soil_0_30cm_shp$bulk_density_g_cm3 <- soil_0_10cm_shp$bulk_density_g_cm3 * (soil_0_10cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD)) + soil_10_30cm_shp$bulk_density_g_cm3 * (soil_10_30cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD))
+# soil_0_30cm_shp$PH <- soil_0_10cm_shp$PH * (soil_0_10cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD)) + soil_10_30cm_shp$PH * (soil_10_30cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD))
 
 #fix textural weighting scheme
-soil_0_30cm_shp$sand_wtd <- soil_0_10cm_shp$SAND * (soil_0_10cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD)) + soil_10_30cm_shp$SAND * (soil_10_30cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD))
-soil_0_30cm_shp$silt_wtd <- soil_0_10cm_shp$SILT * (soil_0_10cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD)) + soil_10_30cm_shp$SILT * (soil_10_30cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD))
-soil_0_30cm_shp$clay_wtd <- soil_0_10cm_shp$CLAY * (soil_0_10cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD)) + soil_10_30cm_shp$CLAY * (soil_10_30cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD))
+# soil_0_30cm_shp$sand_wtd <- soil_0_10cm_shp$SAND * (soil_0_10cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD)) + soil_10_30cm_shp$SAND * (soil_10_30cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD))
+# soil_0_30cm_shp$silt_wtd <- soil_0_10cm_shp$SILT * (soil_0_10cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD)) + soil_10_30cm_shp$SILT * (soil_10_30cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD))
+# soil_0_30cm_shp$clay_wtd <- soil_0_10cm_shp$CLAY * (soil_0_10cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD)) + soil_10_30cm_shp$CLAY * (soil_10_30cm_shp$fines_g_OD / (soil_0_10cm_shp$fines_g_OD + soil_10_30cm_shp$fines_g_OD))
+
+#saved above weighting scheme correction on 5/16/19 for re-run of all tables, figures for Geoderma publication
+write.csv(as.data.frame(soil_0_30cm_shp), file.path(soilCresults, 'intermediate_results', 'soil_0_30cm_df.csv'), row.names = FALSE)
 
 #for Helen: add monthly NDVI to each data.frame
 soil_0_30cm_shp$NDVI_Jan2017mean_1m <- extract(NDVI_2017$Camatta_01162017_NDVI, soil_0_30cm_shp, buffer=1, fun=mean)
@@ -1464,6 +1467,8 @@ all_forage_sp$NDVI_02152017 <- extract(NDVI_2017$Camatta_02152017_NDVI, all_fora
 all_forage_sp$NDVI_03172017 <- extract(NDVI_2017$Camatta_03172017_NDVI, all_forage_sp, buffer=1, fun=mean)
 all_forage_sp$NDVI_04062017 <- extract(NDVI_2017$Camatta_04062017_NDVI, all_forage_sp, buffer=1, fun=mean)
 all_forage_sp$curvature_mean <- extract(Mar2017_terrain_3m$curvature_mean, all_forage_sp)
+all_forage_sp$elevation <- extract(Mar2017_terrain_3m$elevation, all_forage_sp)
+all_forage_sp$annual_kwh.m2 <- extract(Mar2017_terrain_3m$annual_kwh.m2, all_forage_sp)
 #all_forage_sp$clp031417
 summary(lm(clp021517 ~ NDVI_02152017, data=all_forage_sp))
 summary(lm(clp031417 ~ NDVI_03172017, data=all_forage_sp)) #r2=0.09
@@ -1472,6 +1477,10 @@ summary(lm(peak_2017 ~ meanNDVI_2017, data=all_forage_sp)) #r2=0.31
 summary(lm(peak_2017 ~ maxNDVI_2017, data=all_forage_sp)) #r2=0.19
 summary(lm(peak_2017 ~ curvature_mean, data=all_forage_sp)) #r2=0.13
 summary(lm(Apr2017growth ~ curvature_mean, data = all_forage_sp)) #r2=0.18
+summary(lm(Apr2017growth ~ elevation, data = all_forage_sp)) 
+summary(lm(Apr2017growth ~ curvature_mean + elevation, data = all_forage_sp))
+summary(lm(Apr2017growth ~ annual_kwh.m2, data = all_forage_sp))
+summary(lm(Apr2017growth ~ curvature_mean + annual_kwh.m2, data = all_forage_sp)) #0.25
 plot(all_forage_sp$curvature_mean, all_forage_sp$Apr2017growth)
 summary(lm(May2017growth ~ curvature_mean, data=all_forage_sp))
 
