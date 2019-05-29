@@ -1,0 +1,26 @@
+terrainDir <- 'C:/Users/smdevine/Desktop/rangeland project/terrain_analysis_r_v3'
+list.files(terrainDir)
+list.files(file.path(terrainDir, 'filtered_Hogan', '3m_filtered'))
+library(raster)
+ptsDir <- 'C:/Users/smdevine/Desktop/rangeland project/sampling points 2018'
+curv_Mar2017 <- raster(file.path(terrainDir, 'filtered_Hogan', '3m_filtered', 'curv_mean_3m.tif'))
+plot(curv_Mar2017)
+list.files(file.path(terrainDir, 'filtered_Grace'))
+curv_Nov2016 <- raster(file.path(terrainDir, 'filtered_Grace', 'curv_mean_3m_filtered.tif'))
+soil_sampling_pts <- shapefile(file.path(ptsDir, 'soil_sampling_points.shp'))
+plot(soil_sampling_pts, add=TRUE)
+curv_Mar2017_resampled <- resample(curv_Mar2017, curv_Nov2016, method='bilinear')
+curv_Mar2017_resampled[is.na(curv_Nov2016)] <- NA 
+writeRaster(curv_Mar2017_resampled, file.path(terrainDir, 'filtered_Hogan', 'resampled_Nov2016', 'curv_mean_resampled.tif'))
+plot(curv_Mar2017_resampled)
+plot(curv_Nov2016)
+
+class(soil_sampling_pts)
+soil_sampling_pts <- SpatialPointsDataFrame(coordinates(soil_sampling_pts)[,-3], soil_sampling_pts@data,proj4string=CRS(proj4string(soil_sampling_pts)))
+soil_sampling_pts$meancurv_Nov2016 <- extract(curv_Nov2016, soil_sampling_pts)
+soil_sampling_pts$meancurv_Mar2017 <- extract(curv_Mar2017, soil_sampling_pts)
+soil_sampling_pts$meancurv_Mar2017_resamp <- extract(curv_Mar2017_resampled, soil_sampling_pts)
+plot(soil_sampling_pts$meancurv_Nov2016, soil_sampling_pts$meancurv_Mar2017)
+summary(lm(meancurv_Mar2017 ~ meancurv_Nov2016, data = soil_sampling_pts))
+plot(soil_sampling_pts$meancurv_Mar2017, soil_sampling_pts$meancurv_Mar2017_resamp)
+summary(lm(meancurv_Mar2017 ~ meancurv_Mar2017_resamp, data = soil_sampling_pts))
