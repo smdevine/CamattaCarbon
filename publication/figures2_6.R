@@ -69,8 +69,7 @@ terrain_features_3m_df <- terrain_features_3m_df[,colnames(terrain_features_3m_d
 terrain_features_3m_df_norm <- as.data.frame(lapply(terrain_features_3m_df, function(x) {(x - mean(x, na.rm=TRUE)) / sd(x, na.rm = TRUE)}))
 colnames(terrain_features_3m_df_norm) <- c('curvature_mean_norm', 'elevation_norm', 'slope_norm', 'annual_kwh.m2_norm', 'NDVI_2017mean_1m_norm')
 
-
-#define global params
+#define global params for plots
 res_plot <- 800
 mar_settings <- c(3.25, 3.25, 0.5, 0.5)
 x_dim <- 3
@@ -167,8 +166,8 @@ summary(lm(kgOrgC.m2 ~ annual_kwh.m2, data = soil_0_30cm_shp)) #NS; pval=0.10
 summary(lm(kgOrgC.m2 ~ annual_kwh.m2, data = soil_0_10cm_shp)) #NS
 summary(lm(kgOrgC.m2 ~ annual_kwh.m2, data = soil_10_30cm_shp)) #r2=0.09
 
-#5var predicted vs. observed plot; Geoderma version will included added-variable plots
 #Fig 3a
+#5var predicted vs. observed plot; Geoderma version includes added-variable plots
 tiff(file = file.path(FiguresDir, 'Fig3a.tif', sep = ''), family = 'Times New Roman', width = x_dim, height = y_dim_fig3, pointsize = 11, units = 'in', res=res_plot)
 par(mar=mar_settings)
 plot(lm(kgOrgC.m2 ~ curvature_mean + annual_kwh.m2 + slope + elevation + NDVI_2017mean_1m, data = soil_0_30cm_df)$fitted.values, soil_0_30cm_shp$kgOrgC.m2, xlab='', ylab='', pch=21, cex.axis=1, cex.lab=1) #col=soil_0_30cm_shp$energy_colors, ylim = c(300, 1600), xlim=c(1400, 4700)
@@ -263,9 +262,8 @@ abline(lm(residuals(lm_noElevation) ~ residuals(lm_Elevation_vs_X)), lty=2, lwd=
 text(x=-13, y=2.0, label='f')
 dev.off()
 
-
-#Fig4
-#2var predicted vs. observed plot
+#Fig4a-c
+#Fig4a: 2var predicted vs. observed plot
 tiff(file = file.path(FiguresDir, 'Fig4a.tif', sep = ''), family = 'Times New Roman', width = x_dim, height = y_dim_fig3, pointsize = 11, units = 'in', res=res_plot)
 par(mar=mar_settings)
 plot(lm(kgOrgC.m2 ~ curvature_mean + NDVI_2017mean_1m, data = soil_0_30cm_df)$fitted.values, soil_0_30cm_shp$kgOrgC.m2, xlab='', ylab='', pch=21, cex.axis=1, cex.lab=1) #col=soil_0_30cm_shp$energy_colors, ylim = c(300, 1600), xlim=c(1400, 4700)
@@ -358,3 +356,5 @@ kmeans_cluster(3, c('NDVI_2017mean_1m_norm', 'curvature_mean_norm'), writetofile
 
 #Fig 9
 #MLR importance metrics
+calc.relimp(lm(kgOrgC.m2 ~ curvature_mean + annual_kwh.m2 + slope + elevation + NDVI_2017mean_1m, data = soil_0_30cm_df))
+
