@@ -600,11 +600,13 @@ results_3class_2var <- data.frame(n=seq(3, 30, 3), do.call(rbind, lapply(list(st
 colnames(results_3class_2var)[2:4] <- c('prob_20%', 'prob_10%', 'prob_5%')
 results_3class_2var
 write.csv(results_3class_2var, file.path(ResultsDir, 'NDVI_curv_three_class.csv'), row.names = FALSE)
+results_3class_2var <- read.csv(file.path(ResultsDir, 'NDVI_curv_three_class.csv'), stringsAsFactors = FALSE)
 
 results_3class_MLR.5var <- data.frame(n=seq(from=3, to=30, by=3), do.call(rbind, lapply(list(strat3_classSOC30_5var.terciles, strat6_classSOC30_5var.terciles, strat9_classSOC30_5var.terciles, strat12_classSOC30_5var.quartile, strat15_classSOC30_5var.terciles, strat18_classSOC30_5var.terciles, strat21_classSOC30_5var.terciles, strat24_classSOC30_5var.terciles, strat27_classSOC30_5var.terciles, strat30_classSOC30_5var.terciles), calculate_thresholds,  iterations=10000)))
 colnames(results_3class_MLR.5var)[2:4] <- c('prob_20%', 'prob_10%', 'prob_5%')
 results_3class_MLR.5var
 write.csv(results_3class_MLR.5var, file.path(ResultsDir, 'MLRbest5var_three_class.csv'), row.names = FALSE)
+results_3class_MLR.5var <- read.csv(file.path(ResultsDir, 'MLRbest5var_three_class.csv'), stringsAsFactors = FALSE)
 
 results_4class_MLR.5var <- data.frame(n=c(4, 8, 12, 16, 20, 24, 28), do.call(rbind, lapply(list(strat4_classSOC30_5var.quartile, strat8_classSOC30_5var.quartile, strat12_classSOC30_5var.quartile, strat16_classSOC30_5var.quartile, strat20_classSOC30_5var.quartile, strat24_classSOC30_5var.quartile, strat28_classSOC30_5var.quartile), calculate_thresholds,  iterations=10000)))
 colnames(results_4class_MLR.5var)[2:4] <- c('prob_20%', 'prob_10%', 'prob_5%')
@@ -635,20 +637,21 @@ results_random_sampling <- data.frame(n=seq(from=3, to=30, by=3), do.call(rbind,
 colnames(results_random_sampling)[2:4] <- c('prob_20%', 'prob_10%', 'prob_5%')
 results_random_sampling
 write.csv(results_random_sampling, file.path(ResultsDir, 'random_sampling.csv'), row.names = FALSE)
+results_random_sampling <- read.csv(file.path(ResultsDir, 'random_sampling.csv'), stringsAsFactors = FALSE)
 
 
 #plot the comparison (Fig 7)
-tiff(file = file.path(FiguresDir, 'Fig7.tif', sep = ''), family = 'Times New Roman', width = 4.5, height = 4.5, pointsize = 11, units = 'in', res=800)
+tiff(file = file.path(FiguresDir, 'Fig7.tif', sep = ''), family = 'Times New Roman', width = 4.5, height = 4.5, pointsize = 11, units = 'in', res=800, compression='lzw')
 par(mar=c(4.5, 4.5, 1, 1))
-plot(results_random_sampling$n, results_random_sampling$`prob_5%`, ylim=c(0, 1), xlab='', ylab='', type='b', col='lightgrey', lty=1, pch=1)
-lines(results_random_sampling$n, results_random_sampling$`prob_10%`, type='b', pch=3, col='lightgrey', lty=2)
-lines(results_random_sampling$n, results_random_sampling$`prob_20%`, type='b', pch=16, col='lightgrey', lty=3)
-lines(results_3class_2var$n, results_3class_2var$`prob_5%`, type='b', col='black', lty=1, pch=1)
-lines(results_3class_2var$n, results_3class_2var$`prob_10%`, type='b', col='black', lty=2, pch=3)
-lines(results_3class_2var$n, results_3class_2var$`prob_20%`, type='b', col='black', lty=3, pch=16)
-lines(results_3class_MLR.5var$n, results_3class_MLR.5var$`prob_5%`, type='b', col='brown', lty=1, pch=1)
-lines(results_3class_MLR.5var$n, results_3class_MLR.5var$`prob_10%`, type='b', col='brown', lty=2, pch=3)
-lines(results_3class_MLR.5var$n, results_3class_MLR.5var$`prob_20%`, type='b', col='brown', lty=3, pch=16)
+plot(results_random_sampling$n, results_random_sampling$prob_5., ylim=c(0, 1), xlab='', ylab='', type='b', col='lightgrey', lty=1, pch=1)
+lines(results_random_sampling$n, results_random_sampling$prob_10., type='b', pch=3, col='lightgrey', lty=2)
+lines(results_random_sampling$n, results_random_sampling$prob_20., type='b', pch=16, col='lightgrey', lty=3)
+lines(results_3class_2var$n, results_3class_2var$prob_5., type='b', col='black', lty=1, pch=1)
+lines(results_3class_2var$n, results_3class_2var$prob_10., type='b', col='black', lty=2, pch=3)
+lines(results_3class_2var$n, results_3class_2var$prob_20., type='b', col='black', lty=3, pch=16)
+lines(results_3class_MLR.5var$n, results_3class_MLR.5var$prob_5., type='b', col='brown', lty=1, pch=1)
+lines(results_3class_MLR.5var$n, results_3class_MLR.5var$prob_10., type='b', col='brown', lty=2, pch=3)
+lines(results_3class_MLR.5var$n, results_3class_MLR.5var$prob_20., type='b', col='brown', lty=3, pch=16)
 #points(x=2, y=calculate_thresholds(strat2_class2, 10000)[1], col='darkgrey', pch = 8)
 #points(x=2, y=calculate_thresholds(strat2_class2, 10000)[2], col='darkgrey', pch = 8)
 #points(x=2, y=calculate_thresholds(strat2_class2, 10000)[3], col='darkgrey', pch = 8)
